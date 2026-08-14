@@ -6,7 +6,7 @@
 
 插件是**部署级客户端插件**：装进 web profile 后随 `dsh web` 自动加载，**重启不丢失、无需批准**。
 
-![主题预览](screenshots/preview.png)
+
 
 > 截图占位：把界面截图放到 `screenshots/preview.png` 即可显示。
 

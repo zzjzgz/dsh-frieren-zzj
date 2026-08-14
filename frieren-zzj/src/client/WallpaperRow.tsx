@@ -1,8 +1,9 @@
 /**
- * Wallpaper switch row registered into the General settings section: title +
- * description and a toggle that writes the durable `frieren-zzj` settings
- * section. The row reads the same observable the wallpaper presentation is
- * gated on, so its state always mirrors what the page currently shows.
+ * Wallpaper switch row registered into the Frieren theme settings section:
+ * title + description and a toggle that writes the durable `frieren-zzj`
+ * settings section. The row reads the same observable the wallpaper
+ * presentation is gated on, so its state always mirrors what the page
+ * currently shows.
  */
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the settings SlotMap merge ('settings.general.item') into
@@ -26,7 +27,7 @@ export interface WallpaperRowInjected {
 
 /** Full component props: runtime share + locale seat + the injected face. */
 export type WallpaperRowProps =
-  PropsRuntime<'settings.general.item'> & PropsLocale<'settings.frieren'> & InjectFace<WallpaperRowInjected>
+  PropsRuntime<'settings.frieren.item'> & PropsLocale<'settings.frieren'> & InjectFace<WallpaperRowInjected>
 
 /**
  * Render the wallpaper switch row.

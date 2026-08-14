@@ -1,0 +1,12 @@
+/* The Frieren theme settings section: one column rendering the theme-owned
+ * item rows. Mirrors GeneralSection; rows own their separators. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.section > :global([data-slot='settings.frieren.item']) > :last-child {
+  border-bottom: none;
+}

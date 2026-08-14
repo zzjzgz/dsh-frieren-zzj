@@ -1,0 +1,169 @@
+/* Shared chrome for the Frieren theme settings rows: horizontal copy +
+ * control layout, segmented selectors, toggle chips, and upload controls.
+ * Rows draw their own separators; the section strips the trailing one. */
+
+.group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.06));
+}
+
+/* Variant rows stack copy above controls (they carry two control lines). */
+.groupColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.06));
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary, #322f45);
+}
+
+.description {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dsw-alias-label-secondary, #6f6a80);
+}
+
+.segmented {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: none;
+  justify-content: flex-end;
+}
+
+.segBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #6f6a80);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.segBtn:hover {
+  border-color: var(--dsw-alias-brand-primary, #5a63b8);
+  color: var(--dsw-alias-brand-primary, #5a63b8);
+}
+
+.segBtn[aria-pressed='true'] {
+  background: var(--dsw-alias-brand-primary, #5a63b8);
+  border-color: var(--dsw-alias-brand-primary, #5a63b8);
+  color: #fff;
+}
+
+.segBtn:focus-visible,
+.chip:focus-visible,
+.uploadBtn:focus-visible,
+.clearBtn:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #5a63b8);
+  outline-offset: 1px;
+}
+
+.chipGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #6f6a80);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--dsw-alias-brand-primary, #5a63b8);
+}
+
+.chip[aria-pressed='true'] {
+  background: rgba(90, 99, 184, 0.14);
+  border-color: var(--dsw-alias-brand-primary, #5a63b8);
+  color: var(--dsw-alias-brand-primary, #5a63b8);
+}
+
+.uploadRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.uploadBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--dsw-alias-border-l2, #b9a8c2);
+  background: transparent;
+  color: var(--dsw-alias-label-primary, #322f45);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.uploadBtn:hover {
+  border-color: var(--dsw-alias-brand-primary, #5a63b8);
+  color: var(--dsw-alias-brand-primary, #5a63b8);
+}
+
+.clearBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #6f6a80);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.clearBtn:hover {
+  border-color: var(--dsw-alias-state-error-primary, #b0554b);
+  color: var(--dsw-alias-state-error-primary, #b0554b);
+}
+
+.preview {
+  width: 56px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
+  flex: none;
+}
+
+.error {
+  font-size: 12px;
+  color: var(--dsw-alias-state-error-primary, #b0554b);
+}

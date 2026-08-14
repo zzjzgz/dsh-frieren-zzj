@@ -188,8 +188,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Dictionary namespace owned by the wallpaper switch row. */
 const LOCALE_NS = 'settings.frieren'
 
-/** Required services: the theme registry, the slot system, and the settings transport. */
-export const inject = ['theme', 'slots', 'settingsScope']
+/** Required services: the theme registry, the slot system, the settings transport, and the locale registry. */
+export const inject = ['theme', 'slots', 'settingsScope', 'locale']
 
 /**
  * Client plugin body: stack the token layer, inject the theme chrome

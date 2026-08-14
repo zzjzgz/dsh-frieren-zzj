@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-frieren-zzj",
   "description": "dsh-芙莉莲-zzj — Frieren × Himmel web theme: alias-token overrides, global stylesheet (watercolor background scene, fantasy serif headings, gold-lilac scrollbar, sparkles, blue-moon-weed flowers, magic circles), decorative slot entries, and a user-toggleable wallpaper switch (General settings)",
-  "version": "0.1.0-rc.5",
+  "version": "0.1.0-rc.6",
   "publishConfig": {
     "access": "public"
   },

@@ -1,12 +1,15 @@
 /**
  * Frieren × Himmel web theme, browser half: the alias-token override layer,
- * the global stylesheet (watercolor background, fantasy serif headings,
- * gold-lilac scrollbar, sparkles, blue-moon-weed flowers, magic circles),
- * and the decorative slot entries — frame stage, hero seal, header badge,
- * and the Himmel dock quote. Presentation only: no business state, no
- * model-visible input.
+ * the theme chrome stylesheet (fantasy serif headings, gold-lilac scrollbar,
+ * seal/badge/dock quote), and — gated by the user-owned wallpaper switch —
+ * the wallpaper stylesheet (watercolor background) and the decorative stage
+ * (sparkles, blue-moon-weed flowers, magic circles). The switch lives in the
+ * General settings section as a row writing the `frieren-zzj` settings
+ * namespace registered by the node half. Presentation only: no business
+ * state, no model-visible input.
  */
 import * as React from 'react'
+import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the theme service and slot-name Context merges from the
 // declaring packages (client bundle purity gate: no value imports).
@@ -14,7 +17,17 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { FRI_THEME_CSS } from './fri-theme.css.ts'
+// Type-only: pulls the locale plugin's Context merge (ctx.locale).
+import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: the settings surface's SlotMap merge ('settings.general.item')
+// and the ctx.settingsScope Context merge.
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import { FRI_BASE_CSS } from './fri-base.css.ts'
+import { FRI_WALLPAPER_CSS } from './fri-theme.css.ts'
+import { FRIEREN_SETTINGS_NAMESPACE, WALLPAPER_FIELD, type FrierenSettings } from '../frieren-settings.ts'
+import { WallpaperRow } from './WallpaperRow.tsx'
+import type { WallpaperRowInjected } from './WallpaperRow.tsx'
+import { en, zh, type FrierenLocaleKey } from './locales.ts'
 
 /** Alias-token overrides: lavender parchment (light) / indigo night (dark). */
 const TOKENS = {
@@ -73,6 +86,12 @@ const FLOWERS: readonly FlowerSpec[] = [
   { left: '47%', size: 9, delay: 11, dur: 18 },
 ]
 
+/** Bare observable the renderer binds into a use<Name> selector hook. */
+interface BareObservable<T> {
+  getSnapshot(): T
+  subscribe(fn: () => void): () => void
+}
+
 /** 苍月草 (blue moon weed): five pale-blue petals around a gold core. */
 function BlueFlower(props: { size: number; className?: string; style?: React.CSSProperties }): React.ReactElement {
   const petals = [0, 72, 144, 216, 288].map((angle) =>
@@ -93,8 +112,12 @@ function BlueFlower(props: { size: number; className?: string; style?: React.CSS
   )
 }
 
+/** Component props of the decorative stage: the wallpaper-enabled selector hook. */
+type FriStageProps = InjectFace<{ hooks: { wallpaperEnabled: BareObservable<boolean> } }>
+
 /** Frame-wide decorative stage: glow, sparkles, falling flowers, magic circle, ribbon, vignette. */
-function FriStage(): React.ReactElement {
+function FriStage({ useWallpaperEnabled }: FriStageProps): React.ReactElement | null {
+  if (useWallpaperEnabled(enabled => enabled) === false) return null
   return React.createElement('div', { className: 'fri-stage', 'aria-hidden': true },
     React.createElement('div', { className: 'fri-glow' }),
     SPARKLES.map((s, i) => React.createElement('span', {
@@ -155,30 +178,79 @@ function FriQuote(): React.ReactElement {
   )
 }
 
-/** Required services: the theme registry and the slot system. */
-export const inject = ['theme', 'slots']
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    /** The wallpaper switch row's copy. */
+    'settings.frieren': FrierenLocaleKey
+  }
+}
+
+/** Dictionary namespace owned by the wallpaper switch row. */
+const LOCALE_NS = 'settings.frieren'
+
+/** Required services: the theme registry, the slot system, and the settings transport. */
+export const inject = ['theme', 'slots', 'settingsScope']
 
 /**
- * Client plugin body: stack the token layer, inject the global stylesheet,
- * and register the decorative slot entries. Every side effect is owned by
- * this plugin's fiber and removed on dispose.
+ * Client plugin body: stack the token layer, inject the theme chrome
+ * stylesheet, gate the wallpaper stylesheet and the decorative stage on the
+ * user-owned wallpaper switch, and register the switch row in the General
+ * settings section. Every side effect is owned by this plugin's fiber and
+ * removed on dispose.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.theme.overrideTokens('frieren-theme', TOKENS), 'frieren-zzj: token layer')
 
+  // Theme chrome: fonts, scrollbar, seal, badge, dock quote — always on.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj'
-    tag.textContent = FRI_THEME_CSS
+    tag.textContent = FRI_BASE_CSS
     document.head.appendChild(tag)
     return () => { tag.remove() }
-  }, 'frieren-zzj: global stylesheet')
+  }, 'frieren-zzj: theme chrome stylesheet')
 
-  ctx.slots.inject('shell.overlay', () => ctx.slots.register(
-    { name: 'shell.overlay', id: 'frieren-stage', order: 100 },
-    FriStage,
-  ))
+  // Wallpaper switch: the durable `frieren-zzj` settings namespace. Until the
+  // host section loads (or in a deployment without a settings provider) the
+  // wallpaper stays on — the switch is opt-out, never opt-in.
+  const scope = ctx.settingsScope.bind<FrierenSettings>({ namespace: FRIEREN_SETTINGS_NAMESPACE })
+  const wallpaperEnabled = (): boolean => {
+    const snapshot = scope.getSnapshot()
+    return snapshot.status === 'ready' ? (snapshot.value?.wallpaper ?? true) : true
+  }
+  const wallpaperSource: BareObservable<boolean> = {
+    getSnapshot: wallpaperEnabled,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  // Wallpaper stylesheet: present exactly while the switch is on, so turning
+  // the switch off restores the plain app background without a reload.
+  ctx.effect(() => {
+    const tag = document.createElement('style')
+    tag.dataset.pluginCss = 'frieren-zzj-wallpaper'
+    const sync = (): void => {
+      if (wallpaperEnabled()) {
+        if (!tag.isConnected) {
+          tag.textContent = FRI_WALLPAPER_CSS
+          document.head.appendChild(tag)
+        }
+      } else if (tag.isConnected) {
+        tag.remove()
+      }
+    }
+    sync()
+    const unsubscribe = scope.subscribe(sync)
+    return () => { unsubscribe(); tag.remove() }
+  }, 'frieren-zzj: wallpaper stylesheet')
+
+  // Frame stage: registered once, rendering nothing while the switch is off.
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'frieren-stage',
+    order: 100,
+    inject: () => ({ hooks: { wallpaperEnabled: wallpaperSource } }),
+  }, FriStage))
 
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
     { name: 'sidebar.footer.action', id: 'frieren-seal', order: 100, label: () => '勇者辛美尔的金戒指' },
@@ -194,4 +266,18 @@ export function apply(ctx: ClientContext): void {
     { name: 'conversation.composer.dock', id: 'frieren-quote', order: 100 },
     FriQuote,
   ))
+
+  // The wallpaper switch row in the General settings section. The feature owns
+  // its own settings surface, exactly like the theme's Appearance row.
+  ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'frieren-zzj: settings row dictionaries')
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'frieren-wallpaper',
+    order: 20,
+    locale: LOCALE_NS,
+    inject: (): WallpaperRowInjected => ({
+      setWallpaper: (enabled: boolean) => { void scope.set(WALLPAPER_FIELD, enabled) },
+      hooks: { wallpaperEnabled: wallpaperSource },
+    }),
+  }, WallpaperRow))
 }

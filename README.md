@@ -40,7 +40,7 @@ dsh-frieren-zzj/
 
 ## 安装
 
-> 根据https://github.com/zzjzgz/dsh-frieren-zzj的仓库指引在本地安装这个壁纸插件。
+> 和ai说：根据 https://github.com/zzjzgz/dsh-frieren-zzj 的仓库指引在本地安装这个壁纸插件。
 
 > **原理**：本插件是**客户端插件**（包内声明 `dsh.client`，不是 `dsh.bundle`），所以安装分两步：
 > ① 把 `dist/` 里的 tgz 装进 **web profile** 的依赖（由 pnpm 管理）；

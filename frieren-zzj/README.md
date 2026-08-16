@@ -18,7 +18,8 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
 - appearance (light / dark / system — rides the theme service's own
   `ui-theme` preference namespace, in sync with the built-in Appearance row),
 - custom wallpaper upload stored as a downscaled JPEG data URL in the
-  settings document (restore-built-in clears it),
+  settings document (uploading again replaces the image; restore-built-in
+  clears it),
 - input-bar material (glass / plain): `glass` applies a FIXED frosted look to
   the input card (`[data-composer-card]`), the task-list dock card
   (`[data-testid='todo-panel']`), and the goal dock card

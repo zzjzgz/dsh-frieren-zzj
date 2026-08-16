@@ -345,6 +345,9 @@ export function apply(ctx: ClientContext): void {
   // Custom wallpaper override: replaces the body background image layer while
   // a user upload is set (and the master switch is on), keeping the dark-mode
   // dimming gradient. The data URL is a JPEG base64 string — no escaping risk.
+  // Re-uploads must rewrite the text even while the tag is already mounted:
+  // the style only ever holds ONE background URL, so an already-connected tag
+  // is stale the moment a new image lands.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj-custom-wallpaper'
@@ -352,13 +355,13 @@ export function apply(ctx: ClientContext): void {
       const s = settingsOf()
       const custom = s.customWallpaper
       const active = s.wallpaper && custom !== ''
-      if (active && !tag.isConnected) {
+      if (active) {
         tag.textContent = `body { background-image: url("${custom}") !important; }
 @media (prefers-color-scheme: dark) {
   body { background-image: linear-gradient(rgba(15,16,32,0.36), rgba(15,16,32,0.36)), url("${custom}") !important; }
 }`
-        document.head.appendChild(tag)
-      } else if (!active && tag.isConnected) {
+        if (!tag.isConnected) document.head.appendChild(tag)
+      } else if (tag.isConnected) {
         tag.remove()
       }
     }

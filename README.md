@@ -38,7 +38,7 @@ dsh-frieren-zzj/
 ├── README.md                  # 本文档
 ├── frieren-zzj/               # 插件源码（即仓库 packages/client/frieren-zzj）
 └── dist/
-    └── deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.18.tgz   # 打包产物（安装版用）
+    └── deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz   # 打包产物（安装版用）
 ```
 
 ## 安装
@@ -59,7 +59,7 @@ dsh-frieren-zzj/
 
 ### 第 1 步：拿到安装包 tgz
 
-- 直接用本仓库自带的 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.18.tgz`；
+- 直接用本仓库自带的 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
 - 或改过源码后自己重新打包（见下文「从源码打包」）。
 
 ### 第 2 步：把 tgz 装进 web profile（二选一）
@@ -68,7 +68,7 @@ dsh-frieren-zzj/
 
 ```powershell
 # 在任意目录执行均可（本机示例用 DSH 源码目录）
-pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.18.tgz"
+pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
 ```
 
 这条命令内部做的事：
@@ -82,7 +82,7 @@ pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/de
 
 ```powershell
 cd $env:USERPROFILE\.dsh\profiles\web      # macOS/Linux: cd ~/.dsh/profiles/web
-pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.18.tgz"
+pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
 ```
 
 > ⚠️ 路径注意：`dsh plugin add` 会把**相对**路径锚定到「你运行命令的目录」，而手动 `pnpm add` 的相对路径会相对 **profile 目录**解析——所以一律写 **`file:` + 正斜杠的绝对路径**最稳妥，不会装错地方。
@@ -139,12 +139,12 @@ pnpm dsh web --dump-config
 
 ## 更新插件（改了源码重新打包后）
 
-1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.18` → `0.1.0-rc.19`）。**必须升**：pnpm 按 lockfile 里的 integrity 校验 tgz，同版本号的新 tgz 不会被重新安装；
-2. 重新打包（见「从源码打包」），得到 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.18.tgz`；
+1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.19` → `0.1.0-rc.20`）。**必须升**：pnpm 按 lockfile 里的 integrity 校验 tgz，同版本号的新 tgz 不会被重新安装；
+2. 重新打包（见「从源码打包」），得到 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
 3. 重装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.18.tgz"
+   pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
    ```
 
 4. 重启 `dsh web` + 浏览器硬刷新。
@@ -209,6 +209,7 @@ pnpm dsh web --dump-config
 - 插件代码：MIT License（见 `LICENSE`）
 - 背景图版权归原作者所有（本仓库默认不含背景图源文件，图片已内嵌进构建产物）
 - 《葬送的芙莉莲》（葬送のフリーレン）版权归 山田鐘人・アベツカサ 及动画制作方所有；本插件为粉丝自制装饰主题，与版权方无关
+
 
 
 

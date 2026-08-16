@@ -51,9 +51,10 @@ export const GLASS_CSS = `${GLASS_CARDS.join(',\n')} {
   backdrop-filter: blur(28px) saturate(1.35) !important;
   border: 1px solid rgba(255, 255, 255, 0.38) !important;
   border-radius: 14px !important;
-  /* Deliberately tiny shadow: a wide blur (e.g. 20px) spreads a visible
-     smudge on both sides of the card onto the wallpaper. */
-  box-shadow: 0 2px 8px rgba(30, 30, 70, 0.08) !important;
+  /* Directional float shadow: a 4px offset carries the floating feel; the
+     16px blur keeps the sides from smudging the wallpaper (the earlier
+     20px blur spread a visible smudge on both sides of the card). */
+  box-shadow: 0 4px 16px rgba(30, 30, 70, 0.16) !important;
 }
 ${GLASS_CARDS.map(selector => `body[data-ds-dark-theme] ${selector}`).join(',\n')} {
   background: rgba(16, 17, 33, 0.12) !important;
@@ -61,5 +62,5 @@ ${GLASS_CARDS.map(selector => `body[data-ds-dark-theme] ${selector}`).join(',\n'
   backdrop-filter: blur(40px) saturate(1.2) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 14px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.20) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32) !important;
 }`

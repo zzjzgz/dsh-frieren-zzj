@@ -4,16 +4,14 @@
 export type FrierenLocaleKey =
   | 'section.nav'
   | 'wallpaper.title' | 'wallpaper.description' | 'wallpaper.on' | 'wallpaper.off'
+  | 'wallpaper.upload.title' | 'wallpaper.upload.description'
+  | 'wallpaper.upload.button' | 'wallpaper.upload.clear' | 'wallpaper.upload.busy' | 'wallpaper.upload.error'
   | 'scheme.title' | 'scheme.description' | 'scheme.light' | 'scheme.dark' | 'scheme.system'
-  | 'variant.title' | 'variant.description'
-  | 'variant.default' | 'variant.dawn' | 'variant.dusk' | 'variant.violet' | 'variant.night' | 'variant.sepia'
-  | 'variant.upload' | 'variant.clear' | 'variant.busy'
-  | 'backdrop.title' | 'backdrop.description' | 'backdrop.auto' | 'backdrop.translucent' | 'backdrop.solid'
+  | 'material.title' | 'material.description' | 'material.glass' | 'material.plain'
   | 'decor.title' | 'decor.description'
   | 'decor.sparkles' | 'decor.flowers' | 'decor.circle' | 'decor.ribbon' | 'decor.vignette'
   | 'quote.title' | 'quote.description' | 'quote.daily' | 'quote.random' | 'quote.fixed'
   | 'quote.series'
-  | 'upload.error'
 
 /** English copy. */
 export const en: Record<FrierenLocaleKey, string> = {
@@ -22,27 +20,21 @@ export const en: Record<FrierenLocaleKey, string> = {
   'wallpaper.description': 'Show the watercolor background scene with its stars, blossoms, and magic circle.',
   'wallpaper.on': 'Wallpaper on',
   'wallpaper.off': 'Wallpaper off',
+  'wallpaper.upload.title': 'Custom wallpaper',
+  'wallpaper.upload.description': 'Upload a local image as your wallpaper; clears back to the built-in scene.',
+  'wallpaper.upload.button': 'Upload local image',
+  'wallpaper.upload.clear': 'Restore built-in',
+  'wallpaper.upload.busy': 'Processing…',
+  'wallpaper.upload.error': 'Could not read that image — try another file.',
   'scheme.title': 'Appearance',
   'scheme.description': 'Pick light, dark, or follow the system. Stays in sync with the Appearance row.',
   'scheme.light': 'Light',
   'scheme.dark': 'Dark',
   'scheme.system': 'System',
-  'variant.title': 'Wallpaper tone',
-  'variant.description': 'Pick a built-in tone, or upload a local image as your custom wallpaper.',
-  'variant.default': 'Day sky',
-  'variant.dawn': 'Dawn',
-  'variant.dusk': 'Dusk',
-  'variant.violet': 'Violet',
-  'variant.night': 'Starry night',
-  'variant.sepia': 'Sepia',
-  'variant.upload': 'Upload local image',
-  'variant.clear': 'Restore built-in',
-  'variant.busy': 'Processing…',
-  'backdrop.title': 'Content backdrop',
-  'backdrop.description': 'How much the message area separates from the wallpaper. Auto goes solid when a custom wallpaper is bright or warm.',
-  'backdrop.auto': 'Auto',
-  'backdrop.translucent': 'Translucent',
-  'backdrop.solid': 'Solid',
+  'material.title': 'Input bar material',
+  'material.description': 'Glass frosts the input card, the task list, and the goal bar; message cards keep their default surfaces. Plain restores every default surface.',
+  'material.glass': 'Glass',
+  'material.plain': 'Plain',
   'decor.title': 'Decorations',
   'decor.description': 'Toggle each decoration layer of the wallpaper scene.',
   'decor.sparkles': 'Sparkles',
@@ -56,7 +48,6 @@ export const en: Record<FrierenLocaleKey, string> = {
   'quote.random': 'Random',
   'quote.fixed': 'Fixed',
   'quote.series': 'Frieren: Beyond Journey\u2019s End',
-  'upload.error': 'Could not read that image — try another file.',
 }
 
 /** Simplified Chinese copy. */
@@ -66,27 +57,21 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'wallpaper.description': '显示水彩壁纸背景与星光、飘花、魔法阵等装饰。',
   'wallpaper.on': '壁纸已开启',
   'wallpaper.off': '壁纸已关闭',
+  'wallpaper.upload.title': '自定义壁纸',
+  'wallpaper.upload.description': '上传本地图片作为壁纸，可随时恢复内置背景。',
+  'wallpaper.upload.button': '上传本地图片',
+  'wallpaper.upload.clear': '恢复内置',
+  'wallpaper.upload.busy': '处理中…',
+  'wallpaper.upload.error': '无法读取这张图片，请换一张试试。',
   'scheme.title': '外观模式',
   'scheme.description': '选择浅色、深色或跟随系统，与「外观」设置保持同步。',
   'scheme.light': '浅色',
   'scheme.dark': '深色',
   'scheme.system': '跟随系统',
-  'variant.title': '壁纸色调',
-  'variant.description': '选择内置色调，或上传本地图片作为自定义壁纸。',
-  'variant.default': '青空',
-  'variant.dawn': '晨曦',
-  'variant.dusk': '黄昏',
-  'variant.violet': '暮紫',
-  'variant.night': '星夜',
-  'variant.sepia': '复古',
-  'variant.upload': '上传本地图片',
-  'variant.clear': '恢复内置',
-  'variant.busy': '处理中…',
-  'backdrop.title': '内容区衬底',
-  'backdrop.description': '消息区与壁纸的区分程度。自动模式：自定义壁纸较亮或较暖时，消息区自动改用实底背景。',
-  'backdrop.auto': '自动',
-  'backdrop.translucent': '半透明',
-  'backdrop.solid': '实底',
+  'material.title': '输入框材质',
+  'material.description': '玻璃 = 输入框、任务清单、目标卡片毛玻璃，消息区卡片保持默认表面、壁纸完整可见；普通 = 全部恢复默认表面。',
+  'material.glass': '玻璃',
+  'material.plain': '普通',
   'decor.title': '装饰元素',
   'decor.description': '单独开关壁纸上的各层装饰。',
   'decor.sparkles': '星光',
@@ -100,5 +85,4 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'quote.random': '随机',
   'quote.fixed': '固定台词',
   'quote.series': '葬送的芙莉莲',
-  'upload.error': '无法读取这张图片，请换一张试试。',
 }

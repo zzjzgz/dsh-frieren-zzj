@@ -8,17 +8,11 @@ export const FRIEREN_SETTINGS_NAMESPACE = 'frieren-zzj'
 /** Master wallpaper switch. */
 export const WALLPAPER_FIELD = 'wallpaper'
 
-/** Built-in wallpaper tone variant. */
-export const WALLPAPER_VARIANT_FIELD = 'wallpaperVariant'
-
 /** User-uploaded custom wallpaper, stored as a downscaled JPEG data URL. */
 export const CUSTOM_WALLPAPER_FIELD = 'customWallpaper'
 
-/** Perceived brightness (0..1) sampled from the uploaded custom wallpaper. */
-export const CUSTOM_BRIGHTNESS_FIELD = 'customWallpaperBrightness'
-
-/** How much the content area separates from the wallpaper behind it. */
-export const CONTENT_BACKDROP_FIELD = 'contentBackdrop'
+/** Input-bar material choice: frosted glass or the plain default surface. */
+export const INPUT_MATERIAL_FIELD = 'inputMaterial'
 
 /** Per-element decoration switches (kept flat so each rides one settings path). */
 export const DECOR_SPARKLES_FIELD = 'decorSparkles'
@@ -30,32 +24,24 @@ export const DECOR_VIGNETTE_FIELD = 'decorVignette'
 /** Quote rotation mode for the composer dock line. */
 export const QUOTE_MODE_FIELD = 'quoteMode'
 
-/**
- * Built-in wallpaper tone variants. The tint is applied through body
- * multi-layer backgrounds with `background-blend-mode` (see
- * ./client/variants.ts) — reliable across browsers, zero extra bytes.
- */
-export const WALLPAPER_VARIANTS = ['default', 'dawn', 'dusk', 'violet', 'night', 'sepia'] as const
-export type WallpaperVariant = typeof WALLPAPER_VARIANTS[number]
-
 /** Quote rotation modes: one per day, random per change, or the fixed classic line. */
 export const QUOTE_MODES = ['daily', 'random', 'fixed'] as const
 export type QuoteMode = typeof QUOTE_MODES[number]
 
-/** Content-backdrop separation modes. */
-export const CONTENT_BACKDROP_MODES = ['auto', 'translucent', 'solid'] as const
-export type ContentBackdropMode = typeof CONTENT_BACKDROP_MODES[number]
-
 /** Defaults mirrored in the schema; reads fall back here while a settings document is absent or stale. */
-export const DEFAULT_WALLPAPER_VARIANT: WallpaperVariant = 'default'
 export const DEFAULT_QUOTE_MODE: QuoteMode = 'daily'
-export const DEFAULT_CONTENT_BACKDROP: ContentBackdropMode = 'auto'
 
 /**
- * Perceived-brightness threshold above which a custom wallpaper counts as
- * "bright or warm" and the auto content-backdrop mode goes solid.
+ * Input-bar materials: `glass` applies the fixed frosted-glass treatment
+ * (article method: low-alpha background, strong backdrop blur, low-opacity
+ * white border, layered shadow — light/dark variants baked in, not
+ * user-adjustable); `plain` restores the default input-card surface.
  */
-export const BRIGHT_CUSTOM_WALLPAPER_THRESHOLD = 0.6
+export const INPUT_MATERIALS = ['glass', 'plain'] as const
+export type InputMaterial = typeof INPUT_MATERIALS[number]
+
+/** Default input-bar material. */
+export const DEFAULT_INPUT_MATERIAL: InputMaterial = 'glass'
 
 /** The five toggleable decoration layers of the wallpaper stage. */
 export interface DecorState {
@@ -78,14 +64,10 @@ export type ResolvedFrierenSettings = Required<FrierenSettings>
 export interface FrierenSettings {
   /** Show the watercolor wallpaper scene; off hides the background image and its stage decorations. */
   wallpaper: boolean
-  /** Built-in wallpaper tone variant. */
-  wallpaperVariant: WallpaperVariant
   /** Custom wallpaper data URL ('' = use the built-in image). */
   customWallpaper: string
-  /** Perceived brightness (0..1) of the custom wallpaper, sampled at upload. */
-  customWallpaperBrightness: number
-  /** Content-area separation: auto solidifies for bright/warm custom wallpapers. */
-  contentBackdrop: ContentBackdropMode
+  /** Input-bar material: frosted glass or plain. */
+  inputMaterial: InputMaterial
   /** Decoration layer switches (see {@link DecorState}). */
   decorSparkles: boolean
   decorFlowers: boolean
@@ -99,10 +81,8 @@ export interface FrierenSettings {
 /** Durable schema; also the wire envelope the browser scope validates against. */
 export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
   [WALLPAPER_FIELD]: z.boolean().default(true),
-  [WALLPAPER_VARIANT_FIELD]: z.union([...WALLPAPER_VARIANTS]).default(DEFAULT_WALLPAPER_VARIANT),
   [CUSTOM_WALLPAPER_FIELD]: z.string().default(''),
-  [CUSTOM_BRIGHTNESS_FIELD]: z.number().min(0).max(1).default(0),
-  [CONTENT_BACKDROP_FIELD]: z.union([...CONTENT_BACKDROP_MODES]).default(DEFAULT_CONTENT_BACKDROP),
+  [INPUT_MATERIAL_FIELD]: z.union([...INPUT_MATERIALS]).default(DEFAULT_INPUT_MATERIAL),
   [DECOR_SPARKLES_FIELD]: z.boolean().default(true),
   [DECOR_FLOWERS_FIELD]: z.boolean().default(true),
   [DECOR_CIRCLE_FIELD]: z.boolean().default(true),
@@ -110,15 +90,6 @@ export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
   [DECOR_VIGNETTE_FIELD]: z.boolean().default(true),
   [QUOTE_MODE_FIELD]: z.union([...QUOTE_MODES]).default(DEFAULT_QUOTE_MODE),
 })
-
-/**
- * Narrow one wire value to a persistable wallpaper variant.
- * @param value - value crossing the settings boundary.
- * @returns whether the value is a built-in variant.
- */
-export function isWallpaperVariant(value: unknown): value is WallpaperVariant {
-  return WALLPAPER_VARIANTS.some(variant => variant === value)
-}
 
 /**
  * Narrow one wire value to a persistable quote mode.
@@ -130,12 +101,12 @@ export function isQuoteMode(value: unknown): value is QuoteMode {
 }
 
 /**
- * Narrow one wire value to a persistable content-backdrop mode.
+ * Narrow one wire value to a persistable input material.
  * @param value - value crossing the settings boundary.
- * @returns whether the value is a built-in backdrop mode.
+ * @returns whether the value is a built-in material.
  */
-export function isContentBackdropMode(value: unknown): value is ContentBackdropMode {
-  return CONTENT_BACKDROP_MODES.some(mode => mode === value)
+export function isInputMaterial(value: unknown): value is InputMaterial {
+  return INPUT_MATERIALS.some(material => material === value)
 }
 
 /**
@@ -146,15 +117,10 @@ export function isContentBackdropMode(value: unknown): value is ContentBackdropM
  * @returns the fully-defaulted settings object.
  */
 export function resolveSettings(value: Partial<FrierenSettings> | undefined): ResolvedFrierenSettings {
-  const brightness = value?.customWallpaperBrightness
   return {
     wallpaper: value?.wallpaper ?? true,
-    wallpaperVariant: isWallpaperVariant(value?.wallpaperVariant) ? value.wallpaperVariant : DEFAULT_WALLPAPER_VARIANT,
     customWallpaper: value?.customWallpaper ?? '',
-    customWallpaperBrightness: typeof brightness === 'number' && Number.isFinite(brightness)
-      ? Math.min(1, Math.max(0, brightness))
-      : 0,
-    contentBackdrop: isContentBackdropMode(value?.contentBackdrop) ? value.contentBackdrop : DEFAULT_CONTENT_BACKDROP,
+    inputMaterial: isInputMaterial(value?.inputMaterial) ? value.inputMaterial : DEFAULT_INPUT_MATERIAL,
     decorSparkles: value?.decorSparkles ?? true,
     decorFlowers: value?.decorFlowers ?? true,
     decorCircle: value?.decorCircle ?? true,
@@ -162,16 +128,4 @@ export function resolveSettings(value: Partial<FrierenSettings> | undefined): Re
     decorVignette: value?.decorVignette ?? true,
     quoteMode: isQuoteMode(value?.quoteMode) ? value.quoteMode : DEFAULT_QUOTE_MODE,
   }
-}
-
-/**
- * Decide whether the content area should use a solid (near-opaque) backdrop
- * under the current settings.
- * @param settings - the resolved settings.
- * @returns whether the content backdrop should be solid.
- */
-export function wantsSolidBackdrop(settings: ResolvedFrierenSettings): boolean {
-  if (settings.contentBackdrop === 'solid') return true
-  if (settings.contentBackdrop === 'translucent') return false
-  return settings.customWallpaper !== '' && settings.customWallpaperBrightness > BRIGHT_CUSTOM_WALLPAPER_THRESHOLD
 }

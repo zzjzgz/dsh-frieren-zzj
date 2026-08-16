@@ -2,7 +2,7 @@
 
 > 葬送的芙莉莲 × 勇者辛美尔 —— DeepSeek Harness Web 界面（`dsh web`）的芙莉莲主题插件
 
-把整个 Web 界面变成充满芙莉莲元素的水彩世界：全站背景图、蓝紫水彩配色、魔法阵、苍月草飘花、星光、勇者金戒指印章与辛美尔的名台词。所有开关都收在设置里的独立「芙莉莲主题」分区：壁纸总开关、外观模式、六种壁纸色调与自定义壁纸、内容区衬底、逐层装饰开关、名台词轮换方式。
+把整个 Web 界面变成充满芙莉莲元素的水彩世界：全站背景图、蓝紫水彩配色、魔法阵、苍月草飘花、星光、勇者金戒指印章与辛美尔的名台词，输入框支持玻璃/普通两种材质（消息区保持透明，壁纸完整可见）。所有开关都收在设置里的独立「芙莉莲主题」分区：壁纸总开关、外观模式、自定义壁纸上传、玻璃拟态、逐层装饰开关、名台词轮换方式。
 
 插件是**部署级客户端插件**：装进 web profile 后随 `dsh web` 自动加载，**重启不丢失、无需批准**。
 
@@ -14,9 +14,8 @@
 
 - 🖼️ **全站水彩背景**：自定义背景图（已内嵌进插件，无需附带图片文件）
 - 🎨 **双模式配色**：浅色 = 薰衣草羊皮纸，深色 = 靛蓝夜空；设置里可选**浅色 / 深色 / 跟随系统**三态（与内置「外观」设置同步）
-- 🏞️ **六种壁纸色调**：青空 / 晨曦 / 黄昏 / 暮紫 / 星夜 / 复古（body 多层背景 + `background-blend-mode` 实现，跨浏览器稳定生效，不增加包体积）
 - 📤 **自定义壁纸**：上传本地图片即作为壁纸（自动压缩到 1600px JPEG 存入设置，可一键恢复内置）
-- 🧱 **内容区衬底**：自动 / 半透明 / 实底三态；自动模式在自定义壁纸较亮或较暖时，消息区自动改用近实底背景，与壁纸清晰区分
+- 🧊 **输入框材质**：玻璃 / 普通二选一。玻璃 = 输入框、任务清单、目标卡片毛玻璃（参考 OceanAvenu Dark Glass 方法：低透明底 + 强模糊 + 白边 + 层次阴影，浅/深色固定配方，不可调节），消息区卡片保持默认表面；普通 = 全部恢复默认表面。消息区保持透明，壁纸完整可见
 - ✨ **逐层装饰开关**：星光、苍月草飘花、魔法阵、彩带、暗角可单独开关
 - 💍 **勇者辛美尔的金戒指印章**：侧边栏底部的金色徽记，内嵌一朵苍月草
 - ❀ **会话头部徽记**：「蒼月草が咲く頃に」
@@ -39,7 +38,7 @@ dsh-frieren-zzj/
 ├── README.md                  # 本文档
 ├── frieren-zzj/               # 插件源码（即仓库 packages/client/frieren-zzj）
 └── dist/
-    └── deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.8.tgz   # 打包产物（安装版用）
+    └── deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.16.tgz   # 打包产物（安装版用）
 ```
 
 ## 安装
@@ -60,7 +59,7 @@ dsh-frieren-zzj/
 
 ### 第 1 步：拿到安装包 tgz
 
-- 直接用本仓库自带的 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.8.tgz`；
+- 直接用本仓库自带的 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.16.tgz`；
 - 或改过源码后自己重新打包（见下文「从源码打包」）。
 
 ### 第 2 步：把 tgz 装进 web profile（二选一）
@@ -69,7 +68,7 @@ dsh-frieren-zzj/
 
 ```powershell
 # 在任意目录执行均可（本机示例用 DSH 源码目录）
-pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.8.tgz"
+pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.16.tgz"
 ```
 
 这条命令内部做的事：
@@ -83,7 +82,7 @@ pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/de
 
 ```powershell
 cd $env:USERPROFILE\.dsh\profiles\web      # macOS/Linux: cd ~/.dsh/profiles/web
-pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.8.tgz"
+pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.16.tgz"
 ```
 
 > ⚠️ 路径注意：`dsh plugin add` 会把**相对**路径锚定到「你运行命令的目录」，而手动 `pnpm add` 的相对路径会相对 **profile 目录**解析——所以一律写 **`file:` + 正斜杠的绝对路径**最稳妥，不会装错地方。
@@ -136,16 +135,16 @@ pnpm dsh web --dump-config
 
 应看到：全站水彩背景、右上角旋转魔法阵、苍月草飘花、金紫星光、顶部彩带、侧边栏金戒指印章、「蒼月草が咲く頃に」徽记、输入栏下方名台词。如果背景/配色变了但装饰没出现，多半是浏览器缓存，再硬刷新一次。
 
-打开设置（左下角齿轮）→ 导航里会出现「芙莉莲主题」分区，可调整：壁纸总开关、外观模式（浅色/深色/跟随系统）、壁纸色调（青空/晨曦/黄昏/暮紫/星夜/复古）与自定义壁纸上传、内容区衬底（自动/半透明/实底）、逐层装饰开关、名台词轮换方式。改完立即生效，无需刷新。
+打开设置（左下角齿轮）→ 导航里会出现「芙莉莲主题」分区，可调整：壁纸总开关、外观模式（浅色/深色/跟随系统）、自定义壁纸上传、输入框材质（玻璃 / 普通）、逐层装饰开关、名台词轮换方式。改完立即生效，无需刷新。
 
 ## 更新插件（改了源码重新打包后）
 
-1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.8` → `0.1.0-rc.9`）。**必须升**：pnpm 按 lockfile 里的 integrity 校验 tgz，同版本号的新 tgz 不会被重新安装；
-2. 重新打包（见「从源码打包」），得到 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.8.tgz`；
+1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.16` → `0.1.0-rc.17`）。**必须升**：pnpm 按 lockfile 里的 integrity 校验 tgz，同版本号的新 tgz 不会被重新安装；
+2. 重新打包（见「从源码打包」），得到 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.16.tgz`；
 3. 重装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.8.tgz"
+   pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.16.tgz"
    ```
 
 4. 重启 `dsh web` + 浏览器硬刷新。
@@ -201,7 +200,7 @@ pnpm dsh web --dump-config
 ## 已知限制
 
 - 背景图内嵌使客户端 bundle 约 0.5 MB（`lib/client.js`）
-- 自定义壁纸以 JPEG data URL 存入用户设置文档（上传时自动压缩到最长边 1600px，一般 < 300 KB；上传时采样感知亮度，供内容区衬底「自动」模式判断）
+- 自定义壁纸以 JPEG data URL 存入用户设置文档（上传时自动压缩到最长边 1600px，一般 < 300 KB；一般 < 300 KB）
 - 装饰层 `pointer-events: none`，不影响任何交互
 - 名台词为粉丝整理的日文原句 + 意译，非官方翻译
 
@@ -210,3 +209,11 @@ pnpm dsh web --dump-config
 - 插件代码：MIT License（见 `LICENSE`）
 - 背景图版权归原作者所有（本仓库默认不含背景图源文件，图片已内嵌进构建产物）
 - 《葬送的芙莉莲》（葬送のフリーレン）版权归 山田鐘人・アベツカサ 及动画制作方所有；本插件为粉丝自制装饰主题，与版权方无关
+
+
+
+
+
+
+
+

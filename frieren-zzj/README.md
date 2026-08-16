@@ -17,14 +17,22 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
 - wallpaper master switch (opt-out; defaults on),
 - appearance (light / dark / system — rides the theme service's own
   `ui-theme` preference namespace, in sync with the built-in Appearance row),
-- wallpaper tone variant (day sky / dawn / dusk / violet / starry night /
-  sepia — body multi-layer backgrounds with `background-blend-mode`,
-  reliable across browsers, zero extra bytes) plus a local-image upload
-  stored as a downscaled JPEG data URL in the settings document, with the
-  sampled perceived brightness persisted alongside,
-- content-backdrop separation (auto / translucent / solid — auto goes solid
-  when a custom wallpaper is bright or warm, so the message area stays
-  legible),
+- custom wallpaper upload stored as a downscaled JPEG data URL in the
+  settings document (restore-built-in clears it),
+- input-bar material (glass / plain): `glass` applies a FIXED frosted look to
+  the input card (`[data-composer-card]`), the task-list dock card
+  (`[data-testid='todo-panel']`), and the goal dock card
+  (`[data-goal-bar] > :first-child` — the dock's only child IS the card)
+  via `backdrop-filter`, following the OceanAvenu Dark Glass method
+  (https://blog.csdn.net/qq_43433246/article/details/162127888): very
+  low-alpha background, strong blur (28px light / 40px dark), low-opacity
+  white border, layered shadow, generous rounding — light and dark variants
+  are baked in and NOT user-adjustable; `plain` removes the stylesheet and
+  every card falls back to its default surface. Message-area cards (bubbles,
+  tool cards) are deliberately not glassed and the message area stays
+  transparent, so the wallpaper remains fully visible. Dark rules ride
+  `body[data-ds-dark-theme]`, so the dark glass follows the user's manual
+  light/dark/system preference, not the OS media query,
 - per-layer decoration toggles (sparkles, blossoms, magic circle, ribbon,
   vignette),
 - quote rotation mode (daily / random / fixed) over an 8-line quote library.
@@ -49,8 +57,7 @@ eviction remain outside the package contract.
   bundle (about 0.5 MB), keeping the image self-contained at the cost of
   bundle size.
 - Custom wallpapers persist as JPEG data URLs inside the user settings
-  document (uploads are downscaled to a 1600px long edge first; the sampled
-  perceived brightness rides along for the auto content-backdrop mode).
+  document (uploads are downscaled to a 1600px long edge first).
 - Quote lines are fan-curated Japanese originals with fan glosses, not
   official translations.
 - Heading fonts load from Google Fonts at runtime; offline sessions fall back

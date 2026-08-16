@@ -3,12 +3,13 @@
  * the theme chrome stylesheet (fantasy serif headings, gold-lilac scrollbar,
  * seal/badge/dock quote), and — gated by the user-owned settings — the
  * wallpaper stylesheet (watercolor background with per-layer decorations),
- * the wallpaper tone/custom overlay, and the decorative stage. The settings
- * live in a dedicated "Frieren theme" settings section: wallpaper master
- * switch, appearance (light/dark/system via the theme service), wallpaper
- * tone + local upload, content-backdrop separation, per-layer decoration
- * toggles, and quote rotation mode. Presentation only: no business state, no
- * model-visible input.
+ * the custom-wallpaper override, the input-card material stylesheet (fixed
+ * frosted glass vs plain; message area stays transparent), and the
+ * decorative stage. The settings live in a dedicated "Frieren theme"
+ * settings section: wallpaper master switch, appearance (light/dark/system
+ * via the theme service), custom wallpaper upload, input-bar material,
+ * per-layer decoration toggles, and quote rotation mode. Presentation only:
+ * no business state, no model-visible input.
  */
 import * as React from 'react'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
@@ -27,21 +28,20 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { FRI_BASE_CSS } from './fri-base.css.ts'
 import { FRI_WALLPAPER_CSS } from './fri-theme.css.ts'
-import { wallpaperOverlayCss } from './variants.ts'
+import { GLASS_CSS } from './glass.ts'
 import {
-  CONTENT_BACKDROP_FIELD, CUSTOM_BRIGHTNESS_FIELD, CUSTOM_WALLPAPER_FIELD, DECOR_CIRCLE_FIELD,
-  DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD, DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD,
-  FRIEREN_SETTINGS_NAMESPACE, QUOTE_MODE_FIELD, resolveSettings, WALLPAPER_FIELD,
-  WALLPAPER_VARIANT_FIELD, wantsSolidBackdrop,
-  type ContentBackdropMode, type DecorState, type FrierenSettings, type QuoteMode, type WallpaperVariant,
+  CUSTOM_WALLPAPER_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
+  DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, FRIEREN_SETTINGS_NAMESPACE, INPUT_MATERIAL_FIELD,
+  QUOTE_MODE_FIELD, resolveSettings, WALLPAPER_FIELD,
+  type DecorState, type FrierenSettings, type InputMaterial, type QuoteMode,
 } from '../frieren-settings.ts'
 import { pickQuote, type FrierenQuote } from './quotes.ts'
 import { en, zh, type FrierenLocaleKey } from './locales.ts'
 import { FriSection } from './FriSection.tsx'
 import { WallpaperRow, type WallpaperRowInjected } from './WallpaperRow.tsx'
 import { SchemeRow, type SchemeRowInjected } from './SchemeRow.tsx'
-import { VariantRow, type VariantRowInjected } from './VariantRow.tsx'
-import { BackdropRow, type BackdropRowInjected } from './BackdropRow.tsx'
+import { WallpaperUploadRow, type WallpaperUploadRowInjected } from './WallpaperUploadRow.tsx'
+import { MaterialRow, type MaterialRowInjected } from './MaterialRow.tsx'
 import { DecorRow, type DecorRowInjected } from './DecorRow.tsx'
 import { QuoteModeRow, type QuoteModeRowInjected } from './QuoteModeRow.tsx'
 
@@ -60,17 +60,6 @@ const TOKENS = {
   '--dsw-alias-state-success-primary': { light: '#4e7d63', dark: '#8fbe97' },
   '--dsw-alias-state-warn-primary': { light: '#c08f3e', dark: '#dcb463' },
   '--dsw-specific-sidebar-fill': { light: 'rgba(242,234,228,0.55)', dark: 'rgba(16,17,33,0.74)' },
-}
-
-/**
- * Solid-content variant of the token layer: near-opaque base and sidebar
- * fills, so a bright/warm custom wallpaper stays outside the message area.
- * Everything else keeps the translucent palette.
- */
-const SOLID_TOKENS = {
-  ...TOKENS,
-  '--dsw-alias-bg-base': { light: 'rgba(248,243,236,0.96)', dark: 'rgba(18,19,36,0.94)' },
-  '--dsw-specific-sidebar-fill': { light: 'rgba(242,234,228,0.96)', dark: 'rgba(16,17,33,0.95)' },
 }
 
 interface SparkleSpec {
@@ -241,15 +230,17 @@ const LOCALE_NS = 'settings.frieren'
 export const inject = ['theme', 'slots', 'settingsScope', 'locale']
 
 /**
- * Client plugin body: stack the token layer (solid or translucent per the
- * content-backdrop setting), inject the theme chrome stylesheet, gate the
- * wallpaper stylesheet and the tone/custom overlay on the user-owned
- * settings, and register the "Frieren theme" settings section with its six
- * rows. Every side effect is owned by this plugin's fiber and removed on
- * dispose.
+ * Client plugin body: stack the token layer, inject the theme chrome
+ * stylesheet, gate the wallpaper stylesheet and the custom-wallpaper override
+ * on the user-owned settings, keep the input-card material stylesheet live
+ * (glass fixed look / plain), and register the "Frieren theme" settings
+ * section with its six rows. Every side effect is owned by this plugin's
+ * fiber and removed on dispose.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  ctx.effect(() => ctx.theme.overrideTokens('frieren-theme', TOKENS), 'frieren-zzj: token layer')
+
   // Theme chrome: fonts, scrollbar, seal, badge, dock quote — always on.
   ctx.effect(() => {
     const tag = document.createElement('style')
@@ -267,19 +258,6 @@ export function apply(ctx: ClientContext): void {
     const snapshot = scope.getSnapshot()
     return resolveSettings(snapshot.status === 'ready' ? snapshot.value : undefined)
   }
-
-  // Token layer: solid while the content-backdrop setting demands it,
-  // translucent otherwise. Re-overriding the same source replaces the layer,
-  // so switching between the two palettes is a single call.
-  ctx.effect(() => {
-    let disposeLayer: (() => void) | undefined
-    const sync = (): void => {
-      disposeLayer = ctx.theme.overrideTokens('frieren-theme', wantsSolidBackdrop(settingsOf()) ? SOLID_TOKENS : TOKENS)
-    }
-    sync()
-    const unsubscribe = scope.subscribe(sync)
-    return () => { unsubscribe(); disposeLayer?.() }
-  }, 'frieren-zzj: token layer')
 
   // Observable sources the stage, dock, and rows bind through use<Name> hooks.
   const wallpaperSource: BareObservable<boolean> = {
@@ -308,18 +286,13 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => scope.subscribe(fn),
   }
 
-  const variantSource: BareObservable<WallpaperVariant> = {
-    getSnapshot: () => settingsOf().wallpaperVariant,
-    subscribe: (fn) => scope.subscribe(fn),
-  }
-
   const customWallpaperSource: BareObservable<string> = {
     getSnapshot: () => settingsOf().customWallpaper,
     subscribe: (fn) => scope.subscribe(fn),
   }
 
-  const backdropSource: BareObservable<ContentBackdropMode> = {
-    getSnapshot: () => settingsOf().contentBackdrop,
+  const materialSource: BareObservable<InputMaterial> = {
+    getSnapshot: () => settingsOf().inputMaterial,
     subscribe: (fn) => scope.subscribe(fn),
   }
 
@@ -369,22 +342,44 @@ export function apply(ctx: ClientContext): void {
     return () => { unsubscribe(); tag.remove() }
   }, 'frieren-zzj: wallpaper stylesheet')
 
-  // Tone/custom overlay: while the wallpaper is on, compose the body
-  // background layers (dim layer in dark mode, tone tint, image) with
-  // background-blend-mode. The image layer is the custom upload when set,
-  // else the built-in `--fri-bg`. background-blend-mode blends layers of the
-  // SAME element — immune to stacking-context isolation, so tone switching
-  // always takes effect. Re-generating the text is idempotent and cheap.
+  // Custom wallpaper override: replaces the body background image layer while
+  // a user upload is set (and the master switch is on), keeping the dark-mode
+  // dimming gradient. The data URL is a JPEG base64 string — no escaping risk.
   ctx.effect(() => {
     const tag = document.createElement('style')
-    tag.dataset.pluginCss = 'frieren-zzj-wallpaper-overlay'
+    tag.dataset.pluginCss = 'frieren-zzj-custom-wallpaper'
     const sync = (): void => {
       const s = settingsOf()
-      const image = s.customWallpaper !== '' ? `url("${s.customWallpaper}")` : 'var(--fri-bg)'
-      const css = wallpaperOverlayCss(s.wallpaperVariant, image)
-      if (s.wallpaper && css !== '') {
-        tag.textContent = css
-        if (!tag.isConnected) document.head.appendChild(tag)
+      const custom = s.customWallpaper
+      const active = s.wallpaper && custom !== ''
+      if (active && !tag.isConnected) {
+        tag.textContent = `body { background-image: url("${custom}") !important; }
+@media (prefers-color-scheme: dark) {
+  body { background-image: linear-gradient(rgba(15,16,32,0.36), rgba(15,16,32,0.36)), url("${custom}") !important; }
+}`
+        document.head.appendChild(tag)
+      } else if (!active && tag.isConnected) {
+        tag.remove()
+      }
+    }
+    sync()
+    const unsubscribe = scope.subscribe(sync)
+    return () => { unsubscribe(); tag.remove() }
+  }, 'frieren-zzj: custom wallpaper stylesheet')
+
+  // Input-card material stylesheet: present exactly while the material is
+  // 'glass' (fixed frosted look); 'plain' removes it and the card falls back
+  // to its default surface. Dark rules ride `body[data-ds-dark-theme]`, so
+  // the dark glass follows the user's manual light/dark/system preference.
+  ctx.effect(() => {
+    const tag = document.createElement('style')
+    tag.dataset.pluginCss = 'frieren-zzj-input-material'
+    const sync = (): void => {
+      if (settingsOf().inputMaterial === 'glass') {
+        if (!tag.isConnected) {
+          tag.textContent = GLASS_CSS
+          document.head.appendChild(tag)
+        }
       } else if (tag.isConnected) {
         tag.remove()
       }
@@ -392,7 +387,7 @@ export function apply(ctx: ClientContext): void {
     sync()
     const unsubscribe = scope.subscribe(sync)
     return () => { unsubscribe(); tag.remove() }
-  }, 'frieren-zzj: wallpaper tone/custom overlay')
+  }, 'frieren-zzj: input material stylesheet')
 
   // Frame stage: registered once, rendering nothing while the switch is off.
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
@@ -463,28 +458,26 @@ export function apply(ctx: ClientContext): void {
 
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',
-    id: 'frieren-variant',
+    id: 'frieren-upload',
     order: 30,
     locale: LOCALE_NS,
-    inject: (): VariantRowInjected => ({
-      setVariant: (variant: WallpaperVariant) => { void scope.set(WALLPAPER_VARIANT_FIELD, variant) },
+    inject: (): WallpaperUploadRowInjected => ({
       setCustomWallpaper: (dataUrl: string) => { void scope.set(CUSTOM_WALLPAPER_FIELD, dataUrl) },
-      setCustomBrightness: (brightness: number) => { void scope.set(CUSTOM_BRIGHTNESS_FIELD, brightness) },
       clearCustomWallpaper: () => { void scope.set(CUSTOM_WALLPAPER_FIELD, '') },
-      hooks: { variant: variantSource, customWallpaper: customWallpaperSource },
+      hooks: { customWallpaper: customWallpaperSource },
     }),
-  }, VariantRow))
+  }, WallpaperUploadRow))
 
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',
-    id: 'frieren-backdrop',
+    id: 'frieren-material',
     order: 35,
     locale: LOCALE_NS,
-    inject: (): BackdropRowInjected => ({
-      setBackdrop: (mode: ContentBackdropMode) => { void scope.set(CONTENT_BACKDROP_FIELD, mode) },
-      hooks: { backdrop: backdropSource },
+    inject: (): MaterialRowInjected => ({
+      setMaterial: (material: InputMaterial) => { void scope.set(INPUT_MATERIAL_FIELD, material) },
+      hooks: { material: materialSource },
     }),
-  }, BackdropRow))
+  }, MaterialRow))
 
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',

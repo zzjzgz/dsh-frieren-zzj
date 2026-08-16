@@ -27,7 +27,7 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
   via `backdrop-filter`, following the OceanAvenu Dark Glass method
   (https://blog.csdn.net/qq_43433246/article/details/162127888): very
   low-alpha background, strong blur (28px light / 40px dark), low-opacity
-  white border, layered shadow, generous rounding — light and dark variants
+  white border, a light directional floating shadow, generous rounding — light and dark variants
   are baked in and NOT user-adjustable; `plain` removes the stylesheet and
   every card falls back to its default surface. Message-area cards (bubbles,
   tool cards) are deliberately not glassed and the message area stays

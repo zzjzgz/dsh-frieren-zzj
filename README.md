@@ -50,6 +50,8 @@ dsh-frieren-zzj/
 > ② 在 web profile 的 `cordis.patch.yml` 里注册一行名录。
 >
 > 两步都只发生在 profile 目录（默认 `%USERPROFILE%\.dsh\profiles\web`，即本机 `C:\Users\zzj\.dsh\profiles\web`），**完全不改动 dsh 源码仓库**；装好后随组合自动加载，重启不丢失、无需批准。
+>
+> **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 命名空间有一份**硬编码白名单**（`agent-loop`、`shell`、`locale`、`permission`、`ui-conversation`、`ui-theme`、`web-search-deepseek` 等），第三方命名空间一律 `settings-not-exposed`，浏览器端写入会被静默丢弃（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边直接向 settings 服务注册命名空间，并额外注册一条同源 HTTP 路由（`/plugins/@deepseek-ai/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，设置仍持久化在用户设置文档（`~/.dsh/settings.yaml`），与内置插件一致。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
 
 ### 第 0 步：确认环境
 
@@ -154,11 +156,14 @@ pnpm dsh web --dump-config
 `dist/` 里的 tgz 就是安装源；需要重新打包时：
 
 1. 升版本号（见「更新插件」）；
-2. 构建出 `lib/` 再打包。本仓库的 `frieren-zzj/` 依赖 `workspace:^` 的 monorepo 依赖和 tsdown 构建链，不是自包含 workspace，所以最稳妥的打包环境是 DSH 源码仓库——把 `frieren-zzj/` 放进其 `packages/client/` 后执行：
+2. 构建出 `lib/` 再打包。本仓库自带一套**独立构建工具链**（`tsconfig.build.json` + `tsdown.config.build.ts` + `platform.build.ts`，仓库根的 `node_modules` 用 junction 复用本机 DSH 源码仓库的依赖，完全不改动 DSH 源码）：
 
-   ```bash
-   pnpm --filter @deepseek-ai/dsh-client-frieren-zzj bundle      # tsdown 构建出 lib/
-   pnpm --filter @deepseek-ai/dsh-client-frieren-zzj pack --pack-destination D:/JavaCode/ds-h/dsh-frieren-zzj/dist
+   ```powershell
+   cd D:\JavaCode\ds-h\dsh-frieren-zzj
+   node node_modules/typescript/bin/tsc -p tsconfig.build.json
+   node node_modules/tsdown/dist/run.mjs -c tsdown.config.build.ts
+   cd frieren-zzj
+   pnpm pack --pack-destination ..\dist
    ```
 
 3. 新的 tgz 出现在 `dist/` 后，按「安装」第 2 步重装即可。

@@ -24,19 +24,20 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: the settings surface's SlotMap merges ('settings.section',
-// 'settings.general.item') and the ctx.settingsScope Context merge.
+// 'settings.general.item').
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { FRI_BASE_CSS } from './fri-base.css.ts'
 import { FRI_WALLPAPER_CSS } from './fri-theme.css.ts'
 import { GLASS_CSS } from './glass.ts'
 import {
   CUSTOM_WALLPAPER_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
-  DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, FRIEREN_SETTINGS_NAMESPACE, INPUT_MATERIAL_FIELD,
+  DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, INPUT_MATERIAL_FIELD,
   QUOTE_MODE_FIELD, resolveSettings, WALLPAPER_FIELD,
-  type DecorState, type FrierenSettings, type InputMaterial, type QuoteMode,
+  type DecorState, type InputMaterial, type QuoteMode,
 } from '../frieren-settings.ts'
 import { pickQuote, type FrierenQuote } from './quotes.ts'
 import { en, zh, type FrierenLocaleKey } from './locales.ts'
+import { FriSettingsBridge } from './fri-settings-bridge.ts'
 import { FriSection } from './FriSection.tsx'
 import { WallpaperRow, type WallpaperRowInjected } from './WallpaperRow.tsx'
 import { SchemeRow, type SchemeRowInjected } from './SchemeRow.tsx'
@@ -136,8 +137,12 @@ type FriStageProps = InjectFace<{ hooks: {
 
 /** Frame-wide decorative stage: glow, sparkles, falling flowers, magic circle, ribbon, vignette. */
 function FriStage({ useWallpaperEnabled, useDecor }: FriStageProps): React.ReactElement | null {
-  if (useWallpaperEnabled(enabled => enabled) === false) return null
+  // Both hooks run unconditionally: an early return between hook calls would
+  // trip React's rules-of-hooks (error #300) and crash the slot entry the
+  // moment the wallpaper switch turns off.
+  const enabled = useWallpaperEnabled(enabled => enabled)
   const decor = useDecor(value => value)
+  if (enabled === false) return null
   const sparkles = decor?.sparkles ?? true
   const flowers = decor?.flowers ?? true
   const circle = decor?.circle ?? true
@@ -226,8 +231,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Dictionary namespace owned by the theme section and its rows. */
 const LOCALE_NS = 'settings.frieren'
 
-/** Required services: the theme registry, the slot system, the settings transport, and the locale registry. */
-export const inject = ['theme', 'slots', 'settingsScope', 'locale']
+/** Required services: the theme registry, the slot system, and the locale registry. */
+export const inject = ['theme', 'slots', 'locale']
 
 /**
  * Client plugin body: stack the token layer, inject the theme chrome
@@ -250,10 +255,16 @@ export function apply(ctx: ClientContext): void {
     return () => { tag.remove() }
   }, 'frieren-zzj: theme chrome stylesheet')
 
-  // The durable `frieren-zzj` settings namespace. Until the host section
-  // loads (or in a deployment without a settings provider) everything stays
-  // on with defaults — the switches are opt-out, never opt-in.
-  const scope = ctx.settingsScope.bind<FrierenSettings>({ namespace: FRIEREN_SETTINGS_NAMESPACE })
+  // The durable `frieren-zzj` settings namespace. The harness settings RPC
+  // allowlist refuses third-party namespaces, so the value rides this
+  // package's own bridge route (node half) instead of settingsScope. Until
+  // the first read lands (or in a deployment without the node half) everything
+  // stays on with defaults — the switches are opt-out, never opt-in.
+  const scope = new FriSettingsBridge()
+  ctx.effect(() => {
+    scope.start()
+    return () => scope.dispose()
+  }, 'frieren-zzj: settings bridge scope')
   const settingsOf = (): ReturnType<typeof resolveSettings> => {
     const snapshot = scope.getSnapshot()
     return resolveSettings(snapshot.status === 'ready' ? snapshot.value : undefined)

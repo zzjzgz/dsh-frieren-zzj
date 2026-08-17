@@ -55,36 +55,29 @@ dsh-frieren-zzj/
 
 ### 第 0 步：确认环境
 
-1. `dsh` CLI 可用。本机是通过 DSH 源码目录启动的：在 `D:\JavaCode\ds-h\deepseek-harness` 下执行 `pnpm dsh ...`；如果你的 `dsh` 已在 PATH 上，下文所有命令去掉 `pnpm` 前缀即可。
+1. `dsh` CLI 可用。本机是通过 DSH 源码目录启动的：在 `D:\dsh-dsp\deepseek-harness` 下执行 `pnpm dsh ...`；如果你的 `dsh` 已在 PATH 上，下文所有命令去掉 `pnpm` 前缀即可。
 2. `pnpm --version` 能正常输出版本号（`dsh plugin` 内部要调用 pnpm）。
 3. 至少成功启动过一次 `dsh web`——首次运行会自动初始化 web profile（组合 `@deepseek-ai/dsh-base` + `@deepseek-ai/dsh-web-app`），profile 目录就出现在 `%USERPROFILE%\.dsh\profiles\web`。
 
-### 第 1 步：拿到安装包 tgz
+### 第 1 步：安装插件（推荐：npm 一条命令）
 
-- 直接用本仓库自带的 `dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
-- 或改过源码后自己重新打包（见下文「从源码打包」）。
-
-### 第 2 步：把 tgz 装进 web profile（二选一）
-
-**方式 A（推荐）：用 `dsh plugin` 一条命令完成**
+插件已发布到 npm（`@zengzhaojun/dsh-client-frieren-zzj`），直接按包名安装：
 
 ```powershell
-# 在任意目录执行均可（本机示例用 DSH 源码目录）
-pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
+pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21"
 ```
 
-这条命令内部做的事：
+- 本质是让 pnpm 从 npm registry 拉包，装进 profile 依赖（由 pnpm 管理）；
+- 本机如果配的是腾讯镜像，新版本可能延迟几分钟才同步；遇到 404 就临时指定官方源：
+  `pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21" --registry=https://registry.npmjs.org`
+- 装完会打印一条 warning：`declares no dsh.bundle — installed as a plain dependency, not a profile layer` —— **这是正常的，不是报错**：它是客户端插件（`dsh.client`）而不是 bundle，名录行我们在第 3 步手动注册。
 
-- profile 不存在时会先自动初始化（web profile 模板：base + web-app）；
-- 以 profile 目录为工作目录调用 `pnpm add <spec>`，把包装进 `node_modules`；
-- 装完会打印一条 warning：`declares no dsh.bundle — installed as a plain dependency, not a profile layer` —— **这是正常的，不是报错**：它是客户端插件（`dsh.client`）而不是 bundle，名录行我们在第 3 步手动注册；
-- 结果：`package.json` 出现依赖、`pnpm-lock.yaml` 与 `node_modules` 同步更新。
+### 第 2 步（可选）：离线/本地 tgz 安装
 
-**方式 B：手动 pnpm（效果与 A 完全相同）**
+没有 npm 网络时，可用仓库 `dist/` 里的 tgz 安装：
 
 ```powershell
-cd $env:USERPROFILE\.dsh\profiles\web      # macOS/Linux: cd ~/.dsh/profiles/web
-pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
+pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.21.tgz"
 ```
 
 > ⚠️ 路径注意：`dsh plugin add` 会把**相对**路径锚定到「你运行命令的目录」，而手动 `pnpm add` 的相对路径会相对 **profile 目录**解析——所以一律写 **`file:` + 正斜杠的绝对路径**最稳妥，不会装错地方。
@@ -93,12 +86,12 @@ pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-z
 
 ```powershell
 # 包本体已存在：
-Get-ChildItem "$env:USERPROFILE\.dsh\profiles\web\node_modules\@deepseek-ai\dsh-client-frieren-zzj\lib"
+Get-ChildItem "$env:USERPROFILE\.dsh\profiles\web\node_modules\@zengzhaojun\dsh-client-frieren-zzj\lib"
 # 或让 pnpm 解释为什么安装它：
 pnpm dsh plugin --profile web why @zengzhaojun/dsh-client-frieren-zzj
 ```
 
-> 小知识：pnpm 写进 `package.json` 的 spec 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象，不要手动改回单斜杠。
+> 小知识：pnpm 写进 `package.json` 的 spec 对本地 tgz 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象；从 npm 安装则是标准的 `"@zengzhaojun/dsh-client-frieren-zzj": "0.1.0-rc.21"`。
 
 ### 第 3 步：在 profile 的 `cordis.patch.yml` 注册名录行
 
@@ -139,17 +132,23 @@ pnpm dsh web --dump-config
 
 打开设置（左下角齿轮）→ 导航里会出现「芙莉莲主题」分区，可调整：壁纸总开关、外观模式（浅色/深色/跟随系统）、自定义壁纸上传、输入框材质（玻璃 / 普通）、逐层装饰开关、名台词轮换方式。改完立即生效，无需刷新。
 
-## 更新插件（改了源码重新打包后）
+## 更新插件（发布新版本）
 
-1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.19` → `0.1.0-rc.20`）。**必须升**：pnpm 按 lockfile 里的 integrity 校验 tgz，同版本号的新 tgz 不会被重新安装；
-2. 重新打包（见「从源码打包」），得到 `dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
-3. 重装：
+1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.21` → `0.1.0-rc.22`）。**必须升**：npm 不允许重复发布同一版本，pnpm 也按 lockfile 校验；
+2. 重新构建 + 发布（见「从源码打包」和「发布到 npm」）：
 
    ```powershell
-   pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
+   cd D:\JavaCode\ds-h\dsh-frieren-zzj\frieren-zzj
+   npm publish --tag rc        # 账号开 2FA 的话会提示输入验证码
    ```
 
-4. 重启 `dsh web` + 浏览器硬刷新。
+3. 任何机器上按新版本号重装：
+
+   ```powershell
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"
+   ```
+
+4. 重启 `dsh web` + 浏览器硬刷新（设置桥依赖 node 半边，**必须完整重启**）。
 
 ## 从源码打包
 
@@ -166,7 +165,7 @@ pnpm dsh web --dump-config
    pnpm pack --pack-destination ..\dist
    ```
 
-3. 新的 tgz 出现在 `dist/` 后，按「安装」第 2 步重装即可。
+3. 新的 tgz 出现在 `dist/` 后，可本地安装（见「安装」第 2 步），或继续发布到 npm（见「发布到 npm」）。
 
 ## 发布到 npm（让 `dsh plugin add "包名@版本"` 直接安装）
 
@@ -187,6 +186,8 @@ pnpm dsh web --dump-config
 
    > 想先看打包内容：`npm publish --dry-run --tag rc`。
 
+   > **2FA 提示**：账号开启双重认证时，`npm publish` 会提示输入验证码（或加 `--otp=6位码`）。想免验证码发布（适合脚本/CI），在 <https://www.npmjs.com/settings/zengzhaojun/tokens> 生成 **Granular Access Token**：All packages + Read and write + 勾选 **Bypass 2FA for publish**，然后 `npm config set //registry.npmjs.org/:_authToken=令牌`。令牌等于发布权限，别提交进仓库、别分享。
+
 3. **任何机器上一条命令安装**（本机腾讯镜像会同步 npmjs，新包一般几分钟内可见）：
 
    ```powershell
@@ -201,7 +202,7 @@ pnpm dsh web --dump-config
 
 4. 记得 `cordis.patch.yml` 里的 `name` 用包名全称 `@zengzhaojun/dsh-client-frieren-zzj`（见安装第 3 步），然后重启 `dsh web`。
 
-> 包名规则：npm 上 scoped 包名 = 你拥有的 scope（用户名或组织）+ 包名。`@deepseek-ai/*` 是官方 scope，个人无法发布；本插件已改用 `@zzjzgz/*`。每次改源码发布前记得**升版本号**（npm 不允许重复发布同一版本）。
+> 包名规则：npm 上 scoped 包名 = 你拥有的 scope（用户名或组织）+ 包名。`@deepseek-ai/*` 是官方 scope，个人无法发布；本插件使用账号 `zengzhaojun` 的用户 scope（`@zengzhaojun/*`）。每次改源码发布前记得**升版本号**（npm 不允许重复发布同一版本）。
 
 ## 卸载
 
@@ -229,10 +230,10 @@ pnpm dsh web --dump-config
 不是。它是客户端插件（`dsh.client`），本来就不作为 bundle 层；名录行在 `cordis.patch.yml` 手动注册后即生效。
 
 **主题没生效？**
-按顺序排查：① `pnpm dsh web --dump-config` 里有没有 `frieren-zzj` 行；② `node_modules\@zzjzgz\dsh-client-frieren-zzj` 是否存在；③ 浏览器是否硬刷新（Ctrl+F5）；④ 是否完整重启过 `dsh web`。
+按顺序排查：① `pnpm dsh web --dump-config` 里有没有 `frieren-zzj` 行；② `node_modules\@zengzhaojun\dsh-client-frieren-zzj` 是否存在；③ 浏览器是否硬刷新（Ctrl+F5）；④ 是否完整重启过 `dsh web`。
 
 **朋友怎么用？**
-把本仓库整个 clone/下载，用 `dist/` 里的 tgz 按「安装」步骤走即可；背景图已内嵌，无需额外文件。
+一条命令：`pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21"`，再按「安装」第 3 步注册名录行、重启即可；背景图已内嵌，无需额外文件。离线环境则用 `dist/` 里的 tgz 走第 2 步。
 
 **离线能用吗？**
 能。标题字体在线时从 Google Fonts 加载，离线自动回退本地衬线字体栈；背景与配色完全离线可用。

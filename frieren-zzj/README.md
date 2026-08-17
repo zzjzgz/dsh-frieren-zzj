@@ -14,6 +14,10 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
 `settings.section` entry beside the shell's General page) with durable
 `frieren-zzj` namespace rows:
 
+- **plugin master switch** (defaults on): off removes EVERY theme effect —
+  token layer, chrome stylesheet, wallpaper, stage, glass, seal, badge, dock
+  quote — so the app returns to its default look; the section keeps only the
+  switch and the restore button so it can always be turned back on,
 - wallpaper master switch (opt-out; defaults on),
 - appearance (light / dark / system — rides the theme service's own
   `ui-theme` preference namespace, in sync with the built-in Appearance row),
@@ -36,7 +40,10 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
   light/dark/system preference, not the OS media query,
 - per-layer decoration toggles (sparkles, blossoms, magic circle, ribbon,
   vignette),
-- quote rotation mode (daily / random / fixed) over an 8-line quote library.
+- quote rotation mode (daily / random / fixed) over an 8-line quote library,
+- **restore defaults** button (at the bottom): replaces the whole section with
+  the default values (also clears the custom wallpaper and stale fields from
+  older plugin versions) and re-enables the plugin.
 
 All rows read through a revision-cached observable; every field falls back to
 its default while no settings document is present.

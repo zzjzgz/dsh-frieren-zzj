@@ -12,6 +12,8 @@
 
 ## 特性
 
+- 🛑 **插件总开关**：一键关闭**全部**主题效果（壁纸、装饰、字体、印章、徽记、台词、玻璃、配色），界面立即恢复默认外观；再次开启全部回来。开关在「芙莉莲主题」分区顶部
+- ♻️ **恢复默认设置**：一键把所有设置重置为默认值（壁纸开、玻璃材质、装饰全开、每日台词、清除自定义壁纸与旧版残留字段）并重新开启插件。按钮在分区底部
 - 🖼️ **全站水彩背景**：自定义背景图（已内嵌进插件，无需附带图片文件）
 - 🎨 **双模式配色**：浅色 = 薰衣草羊皮纸，深色 = 靛蓝夜空；设置里可选**浅色 / 深色 / 跟随系统**三态（与内置「外观」设置同步）
 - 📤 **自定义壁纸**：上传本地图片即作为壁纸（自动压缩到 1600px JPEG 存入设置，可随时再次上传替换，或一键恢复内置）
@@ -38,7 +40,7 @@ dsh-frieren-zzj/
 ├── README.md                  # 本文档
 ├── frieren-zzj/               # 插件源码（npm 包 @zengzhaojun/dsh-client-frieren-zzj）
 └── dist/
-    └── zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.21.tgz   # 打包产物（安装版用）
+    └── zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.22.tgz   # 打包产物（安装版用）
 ```
 
 ## 安装
@@ -64,12 +66,12 @@ dsh-frieren-zzj/
 插件已发布到 npm（`@zengzhaojun/dsh-client-frieren-zzj`），直接按包名安装：
 
 ```powershell
-pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21"
+pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"
 ```
 
 - 本质是让 pnpm 从 npm registry 拉包，装进 profile 依赖（由 pnpm 管理）；
 - 本机如果配的是腾讯镜像，新版本可能延迟几分钟才同步；遇到 404 就临时指定官方源：
-  `pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21" --registry=https://registry.npmjs.org`
+  `pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22" --registry=https://registry.npmjs.org`
 - 装完会打印一条 warning：`declares no dsh.bundle — installed as a plain dependency, not a profile layer` —— **这是正常的，不是报错**：它是客户端插件（`dsh.client`）而不是 bundle，名录行我们在第 3 步手动注册。
 
 ### 第 2 步（可选）：离线/本地 tgz 安装
@@ -77,7 +79,7 @@ pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.
 没有 npm 网络时，可用仓库 `dist/` 里的 tgz 安装：
 
 ```powershell
-pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.21.tgz"
+pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.22.tgz"
 ```
 
 > ⚠️ 路径注意：`dsh plugin add` 会把**相对**路径锚定到「你运行命令的目录」，而手动 `pnpm add` 的相对路径会相对 **profile 目录**解析——所以一律写 **`file:` + 正斜杠的绝对路径**最稳妥，不会装错地方。
@@ -91,7 +93,7 @@ Get-ChildItem "$env:USERPROFILE\.dsh\profiles\web\node_modules\@zengzhaojun\dsh-
 pnpm dsh plugin --profile web why @zengzhaojun/dsh-client-frieren-zzj
 ```
 
-> 小知识：pnpm 写进 `package.json` 的 spec 对本地 tgz 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象；从 npm 安装则是标准的 `"@zengzhaojun/dsh-client-frieren-zzj": "0.1.0-rc.21"`。
+> 小知识：pnpm 写进 `package.json` 的 spec 对本地 tgz 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象；从 npm 安装则是标准的 `"@zengzhaojun/dsh-client-frieren-zzj": "0.1.0-rc.22"`。
 
 ### 第 3 步：在 profile 的 `cordis.patch.yml` 注册名录行
 
@@ -130,11 +132,11 @@ pnpm dsh web --dump-config
 
 应看到：全站水彩背景、右上角旋转魔法阵、苍月草飘花、金紫星光、顶部彩带、侧边栏金戒指印章、「蒼月草が咲く頃に」徽记、输入栏下方名台词。如果背景/配色变了但装饰没出现，多半是浏览器缓存，再硬刷新一次。
 
-打开设置（左下角齿轮）→ 导航里会出现「芙莉莲主题」分区，可调整：壁纸总开关、外观模式（浅色/深色/跟随系统）、自定义壁纸上传、输入框材质（玻璃 / 普通）、逐层装饰开关、名台词轮换方式。改完立即生效，无需刷新。
+打开设置（左下角齿轮）→ 导航里会出现「芙莉莲主题」分区，从上到下依次是：**插件总开关**、壁纸总开关、外观模式（浅色/深色/跟随系统）、自定义壁纸上传、输入框材质（玻璃 / 普通）、逐层装饰开关、名台词轮换方式，底部是**恢复默认设置**。改完立即生效，无需刷新。总开关关闭后分区里只保留开关与恢复按钮，方便随时开回来。
 
 ## 更新插件（发布新版本）
 
-1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.21` → `0.1.0-rc.22`）。**必须升**：npm 不允许重复发布同一版本，pnpm 也按 lockfile 校验；
+1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.22` → `0.1.0-rc.23`）。**必须升**：npm 不允许重复发布同一版本，pnpm 也按 lockfile 校验；
 2. 重新构建 + 发布（见「从源码打包」和「发布到 npm」）：
 
    ```powershell
@@ -188,16 +190,18 @@ pnpm dsh web --dump-config
 
    > **2FA 提示**：账号开启双重认证时，`npm publish` 会提示输入验证码（或加 `--otp=6位码`）。想免验证码发布（适合脚本/CI），在 <https://www.npmjs.com/settings/zengzhaojun/tokens> 生成 **Granular Access Token**：All packages + Read and write + 勾选 **Bypass 2FA for publish**，然后 `npm config set //registry.npmjs.org/:_authToken=令牌`。令牌等于发布权限，别提交进仓库、别分享。
 
+   > **版本标签（dist-tag）**：`--tag rc` 发布**不会**更新 `latest` 标签，所以不带版本号的安装命令装到的是 `latest`（可能落后于 rc）。建议安装时**显式写版本**（`@0.1.0-rc.22`）；想统一 latest 可补一条：`npm dist-tag add @zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22 latest`。
+
 3. **任何机器上一条命令安装**（本机腾讯镜像会同步 npmjs，新包一般几分钟内可见）：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21"
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"
    ```
 
    如果镜像还没同步到（404），可先临时指定官方源安装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21" --registry=https://registry.npmjs.org
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22" --registry=https://registry.npmjs.org
    ```
 
 4. 记得 `cordis.patch.yml` 里的 `name` 用包名全称 `@zengzhaojun/dsh-client-frieren-zzj`（见安装第 3 步），然后重启 `dsh web`。
@@ -232,8 +236,11 @@ pnpm dsh web --dump-config
 **主题没生效？**
 按顺序排查：① `pnpm dsh web --dump-config` 里有没有 `frieren-zzj` 行；② `node_modules\@zengzhaojun\dsh-client-frieren-zzj` 是否存在；③ 浏览器是否硬刷新（Ctrl+F5）；④ 是否完整重启过 `dsh web`。
 
+**怎么临时关闭整个插件？**
+设置 →「芙莉莲主题」→ 顶部**总开关**关闭，所有主题效果立即消失、界面恢复默认；再开一次即全部回来。想连设置一起重置，点底部**恢复默认设置**。
+
 **朋友怎么用？**
-一条命令：`pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21"`，再按「安装」第 3 步注册名录行、重启即可；背景图已内嵌，无需额外文件。离线环境则用 `dist/` 里的 tgz 走第 2 步。
+一条命令：`pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"`，再按「安装」第 3 步注册名录行、重启即可；背景图已内嵌，无需额外文件。离线环境则用 `dist/` 里的 tgz 走第 2 步。
 
 **离线能用吗？**
 能。标题字体在线时从 Google Fonts 加载，离线自动回退本地衬线字体栈；背景与配色完全离线可用。

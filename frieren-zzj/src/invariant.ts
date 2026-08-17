@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@zzjzgz/dsh-client-frieren-zzj`.
- * @module @zzjzgz/dsh-client-frieren-zzj/invariant
+ * Package-owned invariant companion for `@zengzhaojun/dsh-client-frieren-zzj`.
+ * @module @zengzhaojun/dsh-client-frieren-zzj/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@zzjzgz/dsh-client-frieren-zzj'
+const PACKAGE_NAME = '@zengzhaojun/dsh-client-frieren-zzj'
 
 /** Cordis companion plugin name. */
 export const name = 'frieren-zzj-invariant'

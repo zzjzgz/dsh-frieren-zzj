@@ -36,9 +36,9 @@
 ```
 dsh-frieren-zzj/
 ├── README.md                  # 本文档
-├── frieren-zzj/               # 插件源码（即仓库 packages/client/frieren-zzj）
+├── frieren-zzj/               # 插件源码（npm 包 @zengzhaojun/dsh-client-frieren-zzj）
 └── dist/
-    └── zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz   # 打包产物（安装版用）
+    └── zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.21.tgz   # 打包产物（安装版用）
 ```
 
 ## 安装
@@ -51,7 +51,7 @@ dsh-frieren-zzj/
 >
 > 两步都只发生在 profile 目录（默认 `%USERPROFILE%\.dsh\profiles\web`，即本机 `C:\Users\zzj\.dsh\profiles\web`），**完全不改动 dsh 源码仓库**；装好后随组合自动加载，重启不丢失、无需批准。
 >
-> **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 命名空间有一份**硬编码白名单**（`agent-loop`、`shell`、`locale`、`permission`、`ui-conversation`、`ui-theme`、`web-search-deepseek` 等），第三方命名空间一律 `settings-not-exposed`，浏览器端写入会被静默丢弃（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边直接向 settings 服务注册命名空间，并额外注册一条同源 HTTP 路由（`/plugins/@zzjzgz/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，设置仍持久化在用户设置文档（`~/.dsh/settings.yaml`），与内置插件一致。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
+> **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 命名空间有一份**硬编码白名单**（`agent-loop`、`shell`、`locale`、`permission`、`ui-conversation`、`ui-theme`、`web-search-deepseek` 等），第三方命名空间一律 `settings-not-exposed`，浏览器端写入会被静默丢弃（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边直接向 settings 服务注册命名空间，并额外注册一条同源 HTTP 路由（`/plugins/@zengzhaojun/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，设置仍持久化在用户设置文档（`~/.dsh/settings.yaml`），与内置插件一致。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
 
 ### 第 0 步：确认环境
 
@@ -95,7 +95,7 @@ pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-z
 # 包本体已存在：
 Get-ChildItem "$env:USERPROFILE\.dsh\profiles\web\node_modules\@deepseek-ai\dsh-client-frieren-zzj\lib"
 # 或让 pnpm 解释为什么安装它：
-pnpm dsh plugin --profile web why @zzjzgz/dsh-client-frieren-zzj
+pnpm dsh plugin --profile web why @zengzhaojun/dsh-client-frieren-zzj
 ```
 
 > 小知识：pnpm 写进 `package.json` 的 spec 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象，不要手动改回单斜杠。
@@ -108,10 +108,10 @@ pnpm dsh plugin --profile web why @zzjzgz/dsh-client-frieren-zzj
 # dsh-芙莉莲-zzj — Frieren × Himmel 主题（客户端插件）
 - insert:
     - id: frieren-zzj
-      name: '@zzjzgz/dsh-client-frieren-zzj'
+      name: '@zengzhaojun/dsh-client-frieren-zzj'
 ```
 
-- `id` 可自取，保证唯一即可；`name` 必须与包名**完全一致**（`@zzjzgz/dsh-client-frieren-zzj`）；
+- `id` 可自取，保证唯一即可；`name` 必须与包名**完全一致**（`@zengzhaojun/dsh-client-frieren-zzj`）；
 - `insert` 表示向组合里插入这一行；profile 的 patch 在 bundle 层**之后**应用，所以这行会出现在最终组合里；
 - 不要改同目录的 `cordis.yml`——那是自动生成的 profile 根文件，文件头注释也写了：*edit cordis.patch.yml, not this file*。
 
@@ -190,16 +190,16 @@ pnpm dsh web --dump-config
 3. **任何机器上一条命令安装**（本机腾讯镜像会同步 npmjs，新包一般几分钟内可见）：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zzjzgz/dsh-client-frieren-zzj@0.1.0-rc.21"
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21"
    ```
 
    如果镜像还没同步到（404），可先临时指定官方源安装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zzjzgz/dsh-client-frieren-zzj@0.1.0-rc.21" --registry=https://registry.npmjs.org
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.21" --registry=https://registry.npmjs.org
    ```
 
-4. 记得 `cordis.patch.yml` 里的 `name` 用包名全称 `@zzjzgz/dsh-client-frieren-zzj`（见安装第 3 步），然后重启 `dsh web`。
+4. 记得 `cordis.patch.yml` 里的 `name` 用包名全称 `@zengzhaojun/dsh-client-frieren-zzj`（见安装第 3 步），然后重启 `dsh web`。
 
 > 包名规则：npm 上 scoped 包名 = 你拥有的 scope（用户名或组织）+ 包名。`@deepseek-ai/*` 是官方 scope，个人无法发布；本插件已改用 `@zzjzgz/*`。每次改源码发布前记得**升版本号**（npm 不允许重复发布同一版本）。
 
@@ -209,10 +209,10 @@ pnpm dsh web --dump-config
 2. 移除依赖：
 
    ```powershell
-   pnpm dsh plugin --profile web remove @zzjzgz/dsh-client-frieren-zzj
+   pnpm dsh plugin --profile web remove @zengzhaojun/dsh-client-frieren-zzj
    # 或手动：
    cd $env:USERPROFILE\.dsh\profiles\web
-   pnpm remove @zzjzgz/dsh-client-frieren-zzj
+   pnpm remove @zengzhaojun/dsh-client-frieren-zzj
    ```
 
 3. 重启 `dsh web`，主题消失。

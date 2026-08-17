@@ -14,7 +14,7 @@ import type { UserConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 import { PLATFORM_MODULES } from './platform.build.ts'
 
-const ID = '@zzjzgz/dsh-client-frieren-zzj'
+const ID = '@zengzhaojun/dsh-client-frieren-zzj'
 
 /** External resolved from the loader module table: platform seeds + the runtime store exemption. */
 const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES, '@deepseek-ai/dsh-client-runtime/client']

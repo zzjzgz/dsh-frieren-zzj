@@ -3,6 +3,8 @@
 /** Locale keys the Frieren theme surface renders. */
 export type FrierenLocaleKey =
   | 'section.nav'
+  | 'enable.title' | 'enable.description' | 'enable.on' | 'enable.off'
+  | 'reset.title' | 'reset.description' | 'reset.button'
   | 'wallpaper.title' | 'wallpaper.description' | 'wallpaper.on' | 'wallpaper.off'
   | 'wallpaper.upload.title' | 'wallpaper.upload.description'
   | 'wallpaper.upload.button' | 'wallpaper.upload.clear' | 'wallpaper.upload.busy' | 'wallpaper.upload.error'
@@ -16,6 +18,13 @@ export type FrierenLocaleKey =
 /** English copy. */
 export const en: Record<FrierenLocaleKey, string> = {
   'section.nav': 'Frieren theme',
+  'enable.title': 'Frieren theme plugin',
+  'enable.description': 'Master switch: off removes every theme effect (wallpaper, decorations, fonts, seal, badge, quotes) and returns the default interface.',
+  'enable.on': 'Theme on',
+  'enable.off': 'Theme off',
+  'reset.title': 'Restore defaults',
+  'reset.description': 'Reset every Frieren theme setting to its default value and re-enable the plugin.',
+  'reset.button': 'Restore defaults',
   'wallpaper.title': 'Frieren wallpaper',
   'wallpaper.description': 'Show the watercolor background scene with its stars, blossoms, and magic circle.',
   'wallpaper.on': 'Wallpaper on',
@@ -53,6 +62,13 @@ export const en: Record<FrierenLocaleKey, string> = {
 /** Simplified Chinese copy. */
 export const zh: Record<FrierenLocaleKey, string> = {
   'section.nav': '芙莉莲主题',
+  'enable.title': '芙莉莲主题插件',
+  'enable.description': '总开关：关闭后主题全部效果（壁纸、装饰、字体、印章、徽记、台词）立即消失，界面恢复默认。',
+  'enable.on': '主题已开启',
+  'enable.off': '主题已关闭',
+  'reset.title': '恢复默认设置',
+  'reset.description': '把所有芙莉莲主题设置重置为默认值，并重新开启插件。',
+  'reset.button': '恢复默认设置',
   'wallpaper.title': '芙莉莲壁纸',
   'wallpaper.description': '显示水彩壁纸背景与星光、飘花、魔法阵等装饰。',
   'wallpaper.on': '壁纸已开启',

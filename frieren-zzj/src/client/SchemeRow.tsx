@@ -20,6 +20,10 @@ export interface SchemeRowInjected {
       getSnapshot(): ThemePreference
       subscribe(fn: () => void): () => void
     }
+    enabled: {
+      getSnapshot(): boolean
+      subscribe(fn: () => void): () => void
+    }
   }
 }
 
@@ -39,8 +43,10 @@ const SCHEMES: readonly { id: ThemePreference; labelKey: FrierenLocaleKey }[] = 
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function SchemeRow({ t, setScheme, useScheme }: SchemeRowProps) {
+export function SchemeRow({ t, setScheme, useScheme, useEnabled }: SchemeRowProps) {
+  const pluginEnabled = useEnabled(value => value)
   const preference = useScheme(value => value)
+  if (pluginEnabled === false) return null
   return (
     <div className={css.group}>
       <div className={css.copy}>

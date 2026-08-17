@@ -19,6 +19,10 @@ export interface QuoteModeRowInjected {
       getSnapshot(): QuoteMode
       subscribe(fn: () => void): () => void
     }
+    enabled: {
+      getSnapshot(): boolean
+      subscribe(fn: () => void): () => void
+    }
   }
 }
 
@@ -38,8 +42,10 @@ const QUOTE_MODES: readonly { id: QuoteMode; labelKey: FrierenLocaleKey }[] = [
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function QuoteModeRow({ t, setQuoteMode, useQuoteMode }: QuoteModeRowProps) {
+export function QuoteModeRow({ t, setQuoteMode, useQuoteMode, useEnabled }: QuoteModeRowProps) {
+  const pluginEnabled = useEnabled(value => value)
   const mode = useQuoteMode(value => value) ?? 'daily'
+  if (pluginEnabled === false) return null
   return (
     <div className={css.group}>
       <div className={css.copy}>

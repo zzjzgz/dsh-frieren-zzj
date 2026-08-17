@@ -167,3 +167,28 @@
   font-size: 12px;
   color: var(--dsw-alias-state-error-primary, #b0554b);
 }
+
+/* Restore-defaults action: a quiet filled button at the end of the section. */
+.resetBtn {
+  flex: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
+  background: rgba(90, 99, 184, 0.1);
+  color: var(--dsw-alias-label-primary, #322f45);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.resetBtn:hover {
+  background: rgba(90, 99, 184, 0.18);
+  border-color: var(--dsw-alias-brand-primary, #5a63b8);
+  color: var(--dsw-alias-brand-primary, #5a63b8);
+}
+
+.resetBtn:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #5a63b8);
+  outline-offset: 1px;
+}

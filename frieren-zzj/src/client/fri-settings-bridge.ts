@@ -96,6 +96,32 @@ export class FriSettingsBridge {
     await this.reload()
   }
 
+  /**
+   * Replace the whole section through the bridge (the "restore defaults"
+   * action). The optimistic snapshot renders immediately; the host answer
+   * replaces it (or a re-read reverts when the write was refused). Never
+   * rejects.
+   * @param section - the complete section to store (unknown fields dropped).
+   */
+  async replace(section: FrierenSettings): Promise<void> {
+    this.publish({ status: 'ready', value: section, revision: this.snapshot.revision + 1 })
+    try {
+      const response = await fetch(SETTINGS_BRIDGE_PATH, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ replace: section }),
+      })
+      const body = await response.json() as { ok?: boolean; value?: FrierenSettings | null }
+      if (body.ok === true) {
+        this.publish({ status: 'ready', value: body.value ?? undefined, revision: this.snapshot.revision + 1 })
+        return
+      }
+    } catch {
+      // bridge unreachable: fall through to the re-read so the UI reverts
+    }
+    await this.reload()
+  }
+
   private publish(next: FriSettingsSnapshot): void {
     this.snapshot = next
     for (const listener of this.listeners) listener()

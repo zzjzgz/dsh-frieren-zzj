@@ -22,6 +22,10 @@ export interface WallpaperRowInjected {
       getSnapshot(): boolean
       subscribe(fn: () => void): () => void
     }
+    enabled: {
+      getSnapshot(): boolean
+      subscribe(fn: () => void): () => void
+    }
   }
 }
 
@@ -34,8 +38,10 @@ export type WallpaperRowProps =
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function WallpaperRow({ t, setWallpaper, useWallpaperEnabled }: WallpaperRowProps) {
+export function WallpaperRow({ t, setWallpaper, useWallpaperEnabled, useEnabled }: WallpaperRowProps) {
+  const pluginEnabled = useEnabled(value => value)
   const enabled = useWallpaperEnabled(value => value) ?? true
+  if (pluginEnabled === false) return null
   return (
     <div className={css.group}>
       <div className={css.copy}>

@@ -21,6 +21,10 @@ export interface WallpaperUploadRowInjected {
       getSnapshot(): string
       subscribe(fn: () => void): () => void
     }
+    enabled: {
+      getSnapshot(): boolean
+      subscribe(fn: () => void): () => void
+    }
   }
 }
 
@@ -69,11 +73,13 @@ async function fileToDataUrl(file: File): Promise<string> {
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, useCustomWallpaper }: WallpaperUploadRowProps) {
+export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, useCustomWallpaper, useEnabled }: WallpaperUploadRowProps) {
+  const pluginEnabled = useEnabled(value => value)
   const custom = useCustomWallpaper(value => value) ?? ''
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  if (pluginEnabled === false) return null
 
   const onFile = async (file: File | undefined): Promise<void> => {
     if (file === undefined) return

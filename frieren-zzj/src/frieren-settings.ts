@@ -5,6 +5,9 @@ import z from '@deepseek-ai/schemastery'
 /** Settings namespace owned by the plugin; persisted in the user-settings document. */
 export const FRIEREN_SETTINGS_NAMESPACE = 'frieren-zzj'
 
+/** Master plugin switch: off removes every theme effect and returns the default UI. */
+export const ENABLED_FIELD = 'enabled'
+
 /** Master wallpaper switch. */
 export const WALLPAPER_FIELD = 'wallpaper'
 
@@ -62,6 +65,8 @@ export type ResolvedFrierenSettings = Required<FrierenSettings>
 
 /** Durable section shared by the Host schema and the browser scope. */
 export interface FrierenSettings {
+  /** Master switch: off disables every theme effect (tokens, chrome, wallpaper, stage, glass). */
+  enabled: boolean
   /** Show the watercolor wallpaper scene; off hides the background image and its stage decorations. */
   wallpaper: boolean
   /** Custom wallpaper data URL ('' = use the built-in image). */
@@ -78,8 +83,23 @@ export interface FrierenSettings {
   quoteMode: QuoteMode
 }
 
+/** The full default section: what a fresh install and the "restore defaults" action produce. */
+export const DEFAULT_FRIEREN_SETTINGS: ResolvedFrierenSettings = {
+  [ENABLED_FIELD]: true,
+  [WALLPAPER_FIELD]: true,
+  [CUSTOM_WALLPAPER_FIELD]: '',
+  [INPUT_MATERIAL_FIELD]: DEFAULT_INPUT_MATERIAL,
+  [DECOR_SPARKLES_FIELD]: true,
+  [DECOR_FLOWERS_FIELD]: true,
+  [DECOR_CIRCLE_FIELD]: true,
+  [DECOR_RIBBON_FIELD]: true,
+  [DECOR_VIGNETTE_FIELD]: true,
+  [QUOTE_MODE_FIELD]: DEFAULT_QUOTE_MODE,
+}
+
 /** Durable schema; also the wire envelope the browser scope validates against. */
 export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
+  [ENABLED_FIELD]: z.boolean().default(true),
   [WALLPAPER_FIELD]: z.boolean().default(true),
   [CUSTOM_WALLPAPER_FIELD]: z.string().default(''),
   [INPUT_MATERIAL_FIELD]: z.union([...INPUT_MATERIALS]).default(DEFAULT_INPUT_MATERIAL),
@@ -118,6 +138,7 @@ export function isInputMaterial(value: unknown): value is InputMaterial {
  */
 export function resolveSettings(value: Partial<FrierenSettings> | undefined): ResolvedFrierenSettings {
   return {
+    enabled: value?.enabled ?? true,
     wallpaper: value?.wallpaper ?? true,
     customWallpaper: value?.customWallpaper ?? '',
     inputMaterial: isInputMaterial(value?.inputMaterial) ? value.inputMaterial : DEFAULT_INPUT_MATERIAL,

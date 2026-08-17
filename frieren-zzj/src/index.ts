@@ -41,6 +41,11 @@ function isPathOp(value: unknown): value is SettingsPathOp {
   return true
 }
 
+/** Narrow an unknown value to a plain object (the wholesale-replace section). */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /** Write one JSON response with the plugin's own content type. */
 function respond(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
@@ -92,13 +97,21 @@ export function apply(ctx: Context): void {
           respond(res, 400, { ok: false, error: error instanceof Error ? error.message : 'invalid request body' })
           return
         }
-        const ops = (payload as { ops?: unknown } | null)?.ops
-        if (!Array.isArray(ops) || ops.length === 0 || !ops.every(isPathOp)) {
-          respond(res, 400, { ok: false, error: 'expected {"ops":[{"op":"set"|"unset","path":[...],"value"?}]}' })
-          return
-        }
+        const envelope = payload as { replace?: unknown; ops?: unknown } | null
         try {
-          await settings.mutate(NS, ops as readonly SettingsPathOp[])
+          if (isPlainObject(envelope?.replace)) {
+            // Wholesale replace (the "restore defaults" action): the user
+            // section becomes exactly the supplied object, which also drops
+            // any stale fields left by older plugin versions.
+            await settings.replace(NS, envelope.replace)
+          } else {
+            const ops = envelope?.ops
+            if (!Array.isArray(ops) || ops.length === 0 || !ops.every(isPathOp)) {
+              respond(res, 400, { ok: false, error: 'expected {"replace":{...}} or {"ops":[{"op":"set"|"unset","path":[...],"value"?}]}' })
+              return
+            }
+            await settings.mutate(NS, ops as readonly SettingsPathOp[])
+          }
         } catch (error) {
           respond(res, 409, { ok: false, error: error instanceof Error ? error.message : String(error) })
           return

@@ -19,6 +19,10 @@ export interface MaterialRowInjected {
       getSnapshot(): InputMaterial
       subscribe(fn: () => void): () => void
     }
+    enabled: {
+      getSnapshot(): boolean
+      subscribe(fn: () => void): () => void
+    }
   }
 }
 
@@ -37,8 +41,10 @@ const MATERIALS: readonly { id: InputMaterial; labelKey: FrierenLocaleKey }[] = 
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function MaterialRow({ t, setMaterial, useMaterial }: MaterialRowProps) {
+export function MaterialRow({ t, setMaterial, useMaterial, useEnabled }: MaterialRowProps) {
+  const pluginEnabled = useEnabled(value => value)
   const material = useMaterial(value => value) ?? 'glass'
+  if (pluginEnabled === false) return null
   return (
     <div className={css.group}>
       <div className={css.copy}>

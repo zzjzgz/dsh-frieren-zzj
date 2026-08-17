@@ -31,14 +31,16 @@ import { FRI_WALLPAPER_CSS } from './fri-theme.css.ts'
 import { GLASS_CSS } from './glass.ts'
 import {
   CUSTOM_WALLPAPER_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
-  DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, INPUT_MATERIAL_FIELD,
-  QUOTE_MODE_FIELD, resolveSettings, WALLPAPER_FIELD,
+  DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, DEFAULT_FRIEREN_SETTINGS, ENABLED_FIELD,
+  INPUT_MATERIAL_FIELD, QUOTE_MODE_FIELD, resolveSettings, WALLPAPER_FIELD,
   type DecorState, type InputMaterial, type QuoteMode,
 } from '../frieren-settings.ts'
 import { pickQuote, type FrierenQuote } from './quotes.ts'
 import { en, zh, type FrierenLocaleKey } from './locales.ts'
 import { FriSettingsBridge } from './fri-settings-bridge.ts'
 import { FriSection } from './FriSection.tsx'
+import { EnableRow, type EnableRowInjected } from './EnableRow.tsx'
+import { ResetRow, type ResetRowInjected } from './ResetRow.tsx'
 import { WallpaperRow, type WallpaperRowInjected } from './WallpaperRow.tsx'
 import { SchemeRow, type SchemeRowInjected } from './SchemeRow.tsx'
 import { WallpaperUploadRow, type WallpaperUploadRowInjected } from './WallpaperUploadRow.tsx'
@@ -184,7 +186,11 @@ function FriStage({ useWallpaperEnabled, useDecor }: FriStageProps): React.React
 }
 
 /** Sidebar seal: the hero Himmel's golden ring holding a blue moon weed. */
-function FriSeal(): React.ReactElement {
+type FriSealProps = InjectFace<{ hooks: { enabled: BareObservable<boolean> } }>
+
+function FriSeal({ useEnabled }: FriSealProps): React.ReactElement | null {
+  const enabled = useEnabled(value => value)
+  if (enabled === false) return null
   return React.createElement('div', { className: 'fri-seal', title: '勇者ヒンメルの指輪 — 芙莉莲×辛美尔主题' },
     React.createElement('span', { className: 'fri-seal-ring' }),
     React.createElement(BlueFlower, { size: 14 }),
@@ -192,7 +198,11 @@ function FriSeal(): React.ReactElement {
 }
 
 /** Session-header badge: 蒼月草が咲く頃に. */
-function FriBadge(): React.ReactElement {
+type FriBadgeProps = InjectFace<{ hooks: { enabled: BareObservable<boolean> } }>
+
+function FriBadge({ useEnabled }: FriBadgeProps): React.ReactElement | null {
+  const enabled = useEnabled(value => value)
+  if (enabled === false) return null
   return React.createElement('div', { className: 'fri-badge', title: '蒼月草が咲く頃に —— 葬送的芙莉莲 × 勇者辛美尔' },
     React.createElement('span', { 'aria-hidden': true }, '❀'),
     React.createElement('span', null, '蒼月草が咲く頃に'),
@@ -200,10 +210,15 @@ function FriBadge(): React.ReactElement {
 }
 
 /** Composer dock quote: rotates per the quote mode; the gloss rides the tooltip. */
-type FriQuoteProps = PropsLocale<'settings.frieren'> & InjectFace<{ hooks: { quote: BareObservable<FrierenQuote> } }>
+type FriQuoteProps = PropsLocale<'settings.frieren'> & InjectFace<{ hooks: {
+  quote: BareObservable<FrierenQuote>
+  enabled: BareObservable<boolean>
+} }>
 
-function FriQuote({ t, useQuote }: FriQuoteProps): React.ReactElement | null {
+function FriQuote({ t, useQuote, useEnabled }: FriQuoteProps): React.ReactElement | null {
+  const enabled = useEnabled(value => value)
   const quote = useQuote(value => value)
+  if (enabled === false) return null
   if (quote === undefined) return null
   return React.createElement('div', { className: 'fri-dock', title: quote.zh },
     React.createElement('span', { className: 'fri-dock-star', 'aria-hidden': true }, '✦'),
@@ -235,26 +250,16 @@ const LOCALE_NS = 'settings.frieren'
 export const inject = ['theme', 'slots', 'locale']
 
 /**
- * Client plugin body: stack the token layer, inject the theme chrome
- * stylesheet, gate the wallpaper stylesheet and the custom-wallpaper override
- * on the user-owned settings, keep the input-card material stylesheet live
- * (glass fixed look / plain), and register the "Frieren theme" settings
- * section with its six rows. Every side effect is owned by this plugin's
- * fiber and removed on dispose.
+ * Client plugin body: gate every effect (token layer, theme chrome
+ * stylesheet, wallpaper stylesheet, custom-wallpaper override, input-card
+ * material, decorative stage, seal, badge, dock quote) on the user-owned
+ * `enabled` master switch plus their individual settings, and register the
+ * "Frieren theme" settings section with its rows (master switch, wallpaper,
+ * appearance, upload, material, decorations, quote mode, restore defaults).
+ * Every side effect is owned by this plugin's fiber and removed on dispose.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.theme.overrideTokens('frieren-theme', TOKENS), 'frieren-zzj: token layer')
-
-  // Theme chrome: fonts, scrollbar, seal, badge, dock quote — always on.
-  ctx.effect(() => {
-    const tag = document.createElement('style')
-    tag.dataset.pluginCss = 'frieren-zzj'
-    tag.textContent = FRI_BASE_CSS
-    document.head.appendChild(tag)
-    return () => { tag.remove() }
-  }, 'frieren-zzj: theme chrome stylesheet')
-
   // The durable `frieren-zzj` settings namespace. The harness settings RPC
   // allowlist refuses third-party namespaces, so the value rides this
   // package's own bridge route (node half) instead of settingsScope. Until
@@ -270,9 +275,50 @@ export function apply(ctx: ClientContext): void {
     return resolveSettings(snapshot.status === 'ready' ? snapshot.value : undefined)
   }
 
+  // Alias-token layer: mounted exactly while the master switch is on, so
+  // turning the plugin off restores the stock alias palette without a reload.
+  ctx.effect(() => {
+    let disposeTokens: (() => void) | undefined
+    const sync = (): void => {
+      const on = settingsOf().enabled
+      if (on && disposeTokens === undefined) {
+        disposeTokens = ctx.theme.overrideTokens('frieren-theme', TOKENS)
+      } else if (!on && disposeTokens !== undefined) {
+        disposeTokens()
+        disposeTokens = undefined
+      }
+    }
+    sync()
+    const unsubscribe = scope.subscribe(sync)
+    return () => { unsubscribe(); disposeTokens?.() }
+  }, 'frieren-zzj: token layer')
+
+  // Theme chrome: fonts, scrollbar, seal, badge, dock quote — present exactly
+  // while the master switch is on.
+  ctx.effect(() => {
+    const tag = document.createElement('style')
+    tag.dataset.pluginCss = 'frieren-zzj'
+    tag.textContent = FRI_BASE_CSS
+    const sync = (): void => {
+      if (settingsOf().enabled) {
+        if (!tag.isConnected) document.head.appendChild(tag)
+      } else if (tag.isConnected) {
+        tag.remove()
+      }
+    }
+    sync()
+    const unsubscribe = scope.subscribe(sync)
+    return () => { unsubscribe(); tag.remove() }
+  }, 'frieren-zzj: theme chrome stylesheet')
+
   // Observable sources the stage, dock, and rows bind through use<Name> hooks.
+  const enabledSource: BareObservable<boolean> = {
+    getSnapshot: () => settingsOf().enabled,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
   const wallpaperSource: BareObservable<boolean> = {
-    getSnapshot: () => settingsOf().wallpaper,
+    getSnapshot: () => settingsOf().enabled && settingsOf().wallpaper,
     subscribe: (fn) => scope.subscribe(fn),
   }
 
@@ -333,13 +379,15 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => ctx.on('theme/change', fn),
   }
 
-  // Wallpaper stylesheet: present exactly while the master switch is on, so
-  // turning it off restores the plain app background without a reload.
+  // Wallpaper stylesheet: present exactly while the plugin and the master
+  // wallpaper switch are on, so turning either off restores the plain app
+  // background without a reload.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj-wallpaper'
     const sync = (): void => {
-      if (settingsOf().wallpaper) {
+      const s = settingsOf()
+      if (s.enabled && s.wallpaper) {
         if (!tag.isConnected) {
           tag.textContent = FRI_WALLPAPER_CSS
           document.head.appendChild(tag)
@@ -354,18 +402,18 @@ export function apply(ctx: ClientContext): void {
   }, 'frieren-zzj: wallpaper stylesheet')
 
   // Custom wallpaper override: replaces the body background image layer while
-  // a user upload is set (and the master switch is on), keeping the dark-mode
-  // dimming gradient. The data URL is a JPEG base64 string — no escaping risk.
-  // Re-uploads must rewrite the text even while the tag is already mounted:
-  // the style only ever holds ONE background URL, so an already-connected tag
-  // is stale the moment a new image lands.
+  // a user upload is set (and the plugin + wallpaper switch are on), keeping
+  // the dark-mode dimming gradient. The data URL is a JPEG base64 string — no
+  // escaping risk. Re-uploads must rewrite the text even while the tag is
+  // already mounted: the style only ever holds ONE background URL, so an
+  // already-connected tag is stale the moment a new image lands.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj-custom-wallpaper'
     const sync = (): void => {
       const s = settingsOf()
       const custom = s.customWallpaper
-      const active = s.wallpaper && custom !== ''
+      const active = s.enabled && s.wallpaper && custom !== ''
       if (active) {
         tag.textContent = `body { background-image: url("${custom}") !important; }
 @media (prefers-color-scheme: dark) {
@@ -381,15 +429,17 @@ export function apply(ctx: ClientContext): void {
     return () => { unsubscribe(); tag.remove() }
   }, 'frieren-zzj: custom wallpaper stylesheet')
 
-  // Input-card material stylesheet: present exactly while the material is
-  // 'glass' (fixed frosted look); 'plain' removes it and the card falls back
-  // to its default surface. Dark rules ride `body[data-ds-dark-theme]`, so
-  // the dark glass follows the user's manual light/dark/system preference.
+  // Input-card material stylesheet: present exactly while the plugin is on
+  // and the material is 'glass' (fixed frosted look); 'plain' removes it and
+  // the card falls back to its default surface. Dark rules ride
+  // `body[data-ds-dark-theme]`, so the dark glass follows the user's manual
+  // light/dark/system preference.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj-input-material'
     const sync = (): void => {
-      if (settingsOf().inputMaterial === 'glass') {
+      const s = settingsOf()
+      if (s.enabled && s.inputMaterial === 'glass') {
         if (!tag.isConnected) {
           tag.textContent = GLASS_CSS
           document.head.appendChild(tag)
@@ -416,22 +466,28 @@ export function apply(ctx: ClientContext): void {
     }),
   }, FriStage))
 
-  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
-    { name: 'sidebar.footer.action', id: 'frieren-seal', order: 100, label: () => '勇者辛美尔的金戒指' },
-    FriSeal,
-  ))
+  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action',
+    id: 'frieren-seal',
+    order: 100,
+    label: () => '勇者辛美尔的金戒指',
+    inject: () => ({ hooks: { enabled: enabledSource } }),
+  }, FriSeal))
 
-  ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register(
-    { name: 'conversation.session.header.utilities', id: 'frieren-badge', order: 100, label: () => '苍月草主题徽记' },
-    FriBadge,
-  ))
+  ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
+    name: 'conversation.session.header.utilities',
+    id: 'frieren-badge',
+    order: 100,
+    label: () => '苍月草主题徽记',
+    inject: () => ({ hooks: { enabled: enabledSource } }),
+  }, FriBadge))
 
   ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
     name: 'conversation.composer.dock',
     id: 'frieren-quote',
     order: 100,
     locale: LOCALE_NS,
-    inject: () => ({ hooks: { quote: quoteSource } }),
+    inject: () => ({ hooks: { quote: quoteSource, enabled: enabledSource } }),
   }, FriQuote))
 
   // The Frieren theme settings section: a nav entry beside General, owning
@@ -447,7 +503,19 @@ export function apply(ctx: ClientContext): void {
     children: { 'settings.frieren.item': { kind: 'list', scope: 'root' } },
   }, FriSection))
 
-  // Rows of the theme section, in display order.
+  // Rows of the theme section, in display order: master switch first, the
+  // theme settings behind it, restore-defaults last.
+  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
+    name: 'settings.frieren.item',
+    id: 'frieren-enable',
+    order: 5,
+    locale: LOCALE_NS,
+    inject: (): EnableRowInjected => ({
+      setEnabled: (enabled: boolean) => { void scope.set(ENABLED_FIELD, enabled) },
+      hooks: { enabled: enabledSource },
+    }),
+  }, EnableRow))
+
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',
     id: 'frieren-wallpaper',
@@ -455,7 +523,7 @@ export function apply(ctx: ClientContext): void {
     locale: LOCALE_NS,
     inject: (): WallpaperRowInjected => ({
       setWallpaper: (enabled: boolean) => { void scope.set(WALLPAPER_FIELD, enabled) },
-      hooks: { wallpaperEnabled: wallpaperSource },
+      hooks: { wallpaperEnabled: wallpaperSource, enabled: enabledSource },
     }),
   }, WallpaperRow))
 
@@ -466,7 +534,7 @@ export function apply(ctx: ClientContext): void {
     locale: LOCALE_NS,
     inject: (): SchemeRowInjected => ({
       setScheme: (preference) => { ctx.theme.setTheme(preference) },
-      hooks: { scheme: schemeSource },
+      hooks: { scheme: schemeSource, enabled: enabledSource },
     }),
   }, SchemeRow))
 
@@ -478,7 +546,7 @@ export function apply(ctx: ClientContext): void {
     inject: (): WallpaperUploadRowInjected => ({
       setCustomWallpaper: (dataUrl: string) => { void scope.set(CUSTOM_WALLPAPER_FIELD, dataUrl) },
       clearCustomWallpaper: () => { void scope.set(CUSTOM_WALLPAPER_FIELD, '') },
-      hooks: { customWallpaper: customWallpaperSource },
+      hooks: { customWallpaper: customWallpaperSource, enabled: enabledSource },
     }),
   }, WallpaperUploadRow))
 
@@ -489,7 +557,7 @@ export function apply(ctx: ClientContext): void {
     locale: LOCALE_NS,
     inject: (): MaterialRowInjected => ({
       setMaterial: (material: InputMaterial) => { void scope.set(INPUT_MATERIAL_FIELD, material) },
-      hooks: { material: materialSource },
+      hooks: { material: materialSource, enabled: enabledSource },
     }),
   }, MaterialRow))
 
@@ -507,7 +575,7 @@ export function apply(ctx: ClientContext): void {
                 : DECOR_VIGNETTE_FIELD
         void scope.set(fieldName, enabled)
       },
-      hooks: { decor: decorSource },
+      hooks: { decor: decorSource, enabled: enabledSource },
     }),
   }, DecorRow))
 
@@ -518,7 +586,17 @@ export function apply(ctx: ClientContext): void {
     locale: LOCALE_NS,
     inject: (): QuoteModeRowInjected => ({
       setQuoteMode: (mode: QuoteMode) => { void scope.set(QUOTE_MODE_FIELD, mode) },
-      hooks: { quoteMode: quoteModeSource },
+      hooks: { quoteMode: quoteModeSource, enabled: enabledSource },
     }),
   }, QuoteModeRow))
+
+  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
+    name: 'settings.frieren.item',
+    id: 'frieren-reset',
+    order: 55,
+    locale: LOCALE_NS,
+    inject: (): ResetRowInjected => ({
+      resetDefaults: () => { void scope.replace(DEFAULT_FRIEREN_SETTINGS) },
+    }),
+  }, ResetRow))
 }

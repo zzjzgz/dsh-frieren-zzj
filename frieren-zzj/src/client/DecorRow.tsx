@@ -19,6 +19,10 @@ export interface DecorRowInjected {
       getSnapshot(): DecorState
       subscribe(fn: () => void): () => void
     }
+    enabled: {
+      getSnapshot(): boolean
+      subscribe(fn: () => void): () => void
+    }
   }
 }
 
@@ -40,8 +44,10 @@ const DECOR_ITEMS: readonly { field: keyof DecorState; labelKey: FrierenLocaleKe
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function DecorRow({ t, setDecor, useDecor }: DecorRowProps) {
+export function DecorRow({ t, setDecor, useDecor, useEnabled }: DecorRowProps) {
+  const pluginEnabled = useEnabled(value => value)
   const decor = useDecor(value => value)
+  if (pluginEnabled === false) return null
   return (
     <div className={css.groupColumn}>
       <div className={css.copy}>

@@ -38,7 +38,7 @@ dsh-frieren-zzj/
 ├── README.md                  # 本文档
 ├── frieren-zzj/               # 插件源码（即仓库 packages/client/frieren-zzj）
 └── dist/
-    └── deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz   # 打包产物（安装版用）
+    └── zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz   # 打包产物（安装版用）
 ```
 
 ## 安装
@@ -51,7 +51,7 @@ dsh-frieren-zzj/
 >
 > 两步都只发生在 profile 目录（默认 `%USERPROFILE%\.dsh\profiles\web`，即本机 `C:\Users\zzj\.dsh\profiles\web`），**完全不改动 dsh 源码仓库**；装好后随组合自动加载，重启不丢失、无需批准。
 >
-> **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 命名空间有一份**硬编码白名单**（`agent-loop`、`shell`、`locale`、`permission`、`ui-conversation`、`ui-theme`、`web-search-deepseek` 等），第三方命名空间一律 `settings-not-exposed`，浏览器端写入会被静默丢弃（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边直接向 settings 服务注册命名空间，并额外注册一条同源 HTTP 路由（`/plugins/@deepseek-ai/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，设置仍持久化在用户设置文档（`~/.dsh/settings.yaml`），与内置插件一致。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
+> **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 命名空间有一份**硬编码白名单**（`agent-loop`、`shell`、`locale`、`permission`、`ui-conversation`、`ui-theme`、`web-search-deepseek` 等），第三方命名空间一律 `settings-not-exposed`，浏览器端写入会被静默丢弃（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边直接向 settings 服务注册命名空间，并额外注册一条同源 HTTP 路由（`/plugins/@zzjzgz/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，设置仍持久化在用户设置文档（`~/.dsh/settings.yaml`），与内置插件一致。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
 
 ### 第 0 步：确认环境
 
@@ -61,7 +61,7 @@ dsh-frieren-zzj/
 
 ### 第 1 步：拿到安装包 tgz
 
-- 直接用本仓库自带的 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
+- 直接用本仓库自带的 `dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
 - 或改过源码后自己重新打包（见下文「从源码打包」）。
 
 ### 第 2 步：把 tgz 装进 web profile（二选一）
@@ -70,7 +70,7 @@ dsh-frieren-zzj/
 
 ```powershell
 # 在任意目录执行均可（本机示例用 DSH 源码目录）
-pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
+pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
 ```
 
 这条命令内部做的事：
@@ -84,7 +84,7 @@ pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/de
 
 ```powershell
 cd $env:USERPROFILE\.dsh\profiles\web      # macOS/Linux: cd ~/.dsh/profiles/web
-pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
+pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
 ```
 
 > ⚠️ 路径注意：`dsh plugin add` 会把**相对**路径锚定到「你运行命令的目录」，而手动 `pnpm add` 的相对路径会相对 **profile 目录**解析——所以一律写 **`file:` + 正斜杠的绝对路径**最稳妥，不会装错地方。
@@ -95,7 +95,7 @@ pnpm add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frie
 # 包本体已存在：
 Get-ChildItem "$env:USERPROFILE\.dsh\profiles\web\node_modules\@deepseek-ai\dsh-client-frieren-zzj\lib"
 # 或让 pnpm 解释为什么安装它：
-pnpm dsh plugin --profile web why @deepseek-ai/dsh-client-frieren-zzj
+pnpm dsh plugin --profile web why @zzjzgz/dsh-client-frieren-zzj
 ```
 
 > 小知识：pnpm 写进 `package.json` 的 spec 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象，不要手动改回单斜杠。
@@ -108,10 +108,10 @@ pnpm dsh plugin --profile web why @deepseek-ai/dsh-client-frieren-zzj
 # dsh-芙莉莲-zzj — Frieren × Himmel 主题（客户端插件）
 - insert:
     - id: frieren-zzj
-      name: '@deepseek-ai/dsh-client-frieren-zzj'
+      name: '@zzjzgz/dsh-client-frieren-zzj'
 ```
 
-- `id` 可自取，保证唯一即可；`name` 必须与包名**完全一致**（`@deepseek-ai/dsh-client-frieren-zzj`）；
+- `id` 可自取，保证唯一即可；`name` 必须与包名**完全一致**（`@zzjzgz/dsh-client-frieren-zzj`）；
 - `insert` 表示向组合里插入这一行；profile 的 patch 在 bundle 层**之后**应用，所以这行会出现在最终组合里；
 - 不要改同目录的 `cordis.yml`——那是自动生成的 profile 根文件，文件头注释也写了：*edit cordis.patch.yml, not this file*。
 
@@ -142,11 +142,11 @@ pnpm dsh web --dump-config
 ## 更新插件（改了源码重新打包后）
 
 1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.19` → `0.1.0-rc.20`）。**必须升**：pnpm 按 lockfile 里的 integrity 校验 tgz，同版本号的新 tgz 不会被重新安装；
-2. 重新打包（见「从源码打包」），得到 `dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
+2. 重新打包（见「从源码打包」），得到 `dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz`；
 3. 重装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/deepseek-ai-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
+   pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zzjzgz-dsh-client-frieren-zzj-0.1.0-rc.19.tgz"
    ```
 
 4. 重启 `dsh web` + 浏览器硬刷新。
@@ -168,16 +168,51 @@ pnpm dsh web --dump-config
 
 3. 新的 tgz 出现在 `dist/` 后，按「安装」第 2 步重装即可。
 
+## 发布到 npm（让 `dsh plugin add "包名@版本"` 直接安装）
+
+`dsh plugin --profile web add "name@version"` 本质是让 pnpm 从 npm registry 拉包，所以把插件发布到 npmjs 后，安装命令就和装任何第三方包一样：
+
+1. **注册/登录 npm 账号**（只需一次）：
+
+   ```powershell
+   npm adduser --registry=https://registry.npmjs.org
+   ```
+
+2. **发布**（在 `frieren-zzj/` 目录；`publishConfig.registry` 已固定指向 npmjs 官方源，不受本机腾讯镜像影响；`rc.*` 是预发布版本，必须显式给 tag）：
+
+   ```powershell
+   cd D:\JavaCode\ds-h\dsh-frieren-zzj\frieren-zzj
+   npm publish --tag rc
+   ```
+
+   > 想先看打包内容：`npm publish --dry-run --tag rc`。
+
+3. **任何机器上一条命令安装**（本机腾讯镜像会同步 npmjs，新包一般几分钟内可见）：
+
+   ```powershell
+   pnpm dsh plugin --profile web add "@zzjzgz/dsh-client-frieren-zzj@0.1.0-rc.21"
+   ```
+
+   如果镜像还没同步到（404），可先临时指定官方源安装：
+
+   ```powershell
+   pnpm dsh plugin --profile web add "@zzjzgz/dsh-client-frieren-zzj@0.1.0-rc.21" --registry=https://registry.npmjs.org
+   ```
+
+4. 记得 `cordis.patch.yml` 里的 `name` 用包名全称 `@zzjzgz/dsh-client-frieren-zzj`（见安装第 3 步），然后重启 `dsh web`。
+
+> 包名规则：npm 上 scoped 包名 = 你拥有的 scope（用户名或组织）+ 包名。`@deepseek-ai/*` 是官方 scope，个人无法发布；本插件已改用 `@zzjzgz/*`。每次改源码发布前记得**升版本号**（npm 不允许重复发布同一版本）。
+
 ## 卸载
 
 1. 删除 `cordis.patch.yml` 里第 3 步加的 insert 块；
 2. 移除依赖：
 
    ```powershell
-   pnpm dsh plugin --profile web remove @deepseek-ai/dsh-client-frieren-zzj
+   pnpm dsh plugin --profile web remove @zzjzgz/dsh-client-frieren-zzj
    # 或手动：
    cd $env:USERPROFILE\.dsh\profiles\web
-   pnpm remove @deepseek-ai/dsh-client-frieren-zzj
+   pnpm remove @zzjzgz/dsh-client-frieren-zzj
    ```
 
 3. 重启 `dsh web`，主题消失。
@@ -194,7 +229,7 @@ pnpm dsh web --dump-config
 不是。它是客户端插件（`dsh.client`），本来就不作为 bundle 层；名录行在 `cordis.patch.yml` 手动注册后即生效。
 
 **主题没生效？**
-按顺序排查：① `pnpm dsh web --dump-config` 里有没有 `frieren-zzj` 行；② `node_modules\@deepseek-ai\dsh-client-frieren-zzj` 是否存在；③ 浏览器是否硬刷新（Ctrl+F5）；④ 是否完整重启过 `dsh web`。
+按顺序排查：① `pnpm dsh web --dump-config` 里有没有 `frieren-zzj` 行；② `node_modules\@zzjzgz\dsh-client-frieren-zzj` 是否存在；③ 浏览器是否硬刷新（Ctrl+F5）；④ 是否完整重启过 `dsh web`。
 
 **朋友怎么用？**
 把本仓库整个 clone/下载，用 `dist/` 里的 tgz 按「安装」步骤走即可；背景图已内嵌，无需额外文件。

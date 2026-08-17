@@ -25,7 +25,7 @@ import { FRIEREN_SETTINGS_NAMESPACE, FrierenSettingsSchema } from './frieren-set
 const NS = settingsNamespace(FRIEREN_SETTINGS_NAMESPACE)
 
 /** Exact route the browser half fetches to read/write this plugin's settings. */
-export const SETTINGS_BRIDGE_PATH = '/plugins/@deepseek-ai/dsh-client-frieren-zzj/settings'
+export const SETTINGS_BRIDGE_PATH = '/plugins/@zzjzgz/dsh-client-frieren-zzj/settings'
 
 /** Upper bound for a bridge write body (custom wallpaper data URLs can be large). */
 const MAX_BRIDGE_BODY_BYTES = 4 * 1024 * 1024

@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-frieren-zzj
+# @zzjzgz/dsh-client-frieren-zzj
 
 dsh-芙莉莲-zzj — Frieren × Himmel (葬送のフリーレン) decorative web theme: an
 alias-token override layer, a global stylesheet, and decorative slot entries. The browser

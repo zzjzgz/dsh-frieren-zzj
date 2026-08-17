@@ -14,7 +14,7 @@
 import type { FrierenSettings } from '../frieren-settings.ts'
 
 /** Same-origin bridge route registered by this package's node half. */
-const SETTINGS_BRIDGE_PATH = '/plugins/@deepseek-ai/dsh-client-frieren-zzj/settings'
+const SETTINGS_BRIDGE_PATH = '/plugins/@zzjzgz/dsh-client-frieren-zzj/settings'
 
 /** One snapshot of the durable section, revision-stamped for consumer caches. */
 export interface FriSettingsSnapshot {

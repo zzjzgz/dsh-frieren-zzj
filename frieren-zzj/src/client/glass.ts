@@ -1,14 +1,13 @@
 /**
- * Input-card glass material — fixed frosted-glass stylesheet.
+ * Input-card glass material — iOS-style frosted-glass stylesheet.
  *
- * Follows the OceanAvenu Dark Glass method
- * (https://blog.csdn.net/qq_43433246/article/details/162127888): a very
- * low-alpha glass background so the wallpaper shows through, a strong
- * `backdrop-filter` blur, a low-opacity white border, a layered shadow, and
- * generous rounding. Light and dark variants are baked in (dark keeps an
- * even lower alpha and a subtler white border, per the article); the
- * material is fixed — users only choose glass vs plain, nothing is
- * adjustable.
+ * Follows the iOS glassmorphism design language (see Apple's Human Interface
+ * Guidelines and typical glassmorphism references): a semi-transparent white
+ * background so the wallpaper shows through, a moderate `backdrop-filter` blur
+ * with saturation boost, a translucent white border, a soft directional shadow,
+ * and generous rounding. Light and dark variants are baked in (dark uses an
+ * even lower-alpha dark base with a subtler white border); the material is
+ * fixed — users only choose glass vs plain, nothing is adjustable.
  *
  * Targets (stable data attributes):
  * - `[data-composer-card]` — the input card (ui-conversation InputBar);
@@ -44,23 +43,20 @@ const GLASS_CARDS: readonly string[] = [
   '[data-goal-bar] > :first-child',
 ]
 
-/** The fixed glass-material stylesheet; injected while inputMaterial = 'glass'. */
+/** The fixed iOS-style glass-material stylesheet; injected while inputMaterial = 'glass'. */
 export const GLASS_CSS = `${GLASS_CARDS.join(',\n')} {
-  background: rgba(255, 255, 255, 0.18) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(1.35);
-  backdrop-filter: blur(28px) saturate(1.35) !important;
-  border: 1px solid rgba(255, 255, 255, 0.38) !important;
-  border-radius: 14px !important;
-  /* Directional float shadow: a 4px offset carries the floating feel; the
-     16px blur keeps the sides from smudging the wallpaper (the earlier
-     20px blur spread a visible smudge on both sides of the card). */
-  box-shadow: 0 4px 16px rgba(30, 30, 70, 0.16) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  backdrop-filter: blur(16px) saturate(1.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2) !important;
 }
 ${GLASS_CARDS.map(selector => `body[data-ds-dark-theme] ${selector}`).join(',\n')} {
-  background: rgba(16, 17, 33, 0.12) !important;
-  -webkit-backdrop-filter: blur(40px) saturate(1.2);
-  backdrop-filter: blur(40px) saturate(1.2) !important;
+  background: rgba(18, 18, 40, 0.2) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36) !important;
 }`

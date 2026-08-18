@@ -275,12 +275,16 @@ export function apply(ctx: ClientContext): void {
     return resolveSettings(snapshot.status === 'ready' ? snapshot.value : undefined)
   }
 
-  // Alias-token layer: mounted exactly while the master switch is on, so
-  // turning the plugin off restores the stock alias palette without a reload.
+  // Alias-token layer: mounted exactly while the master switch AND the
+  // wallpaper switch are on, so turning either off restores the stock alias
+  // palette without a reload. Without this gate, closing the wallpaper would
+  // leave the lavender/indigo token overrides active — the app would stay
+  // pink-tinted instead of returning to its original white/black surfaces.
   ctx.effect(() => {
     let disposeTokens: (() => void) | undefined
     const sync = (): void => {
-      const on = settingsOf().enabled
+      const s = settingsOf()
+      const on = s.enabled && s.wallpaper
       if (on && disposeTokens === undefined) {
         disposeTokens = ctx.theme.overrideTokens('frieren-theme', TOKENS)
       } else if (!on && disposeTokens !== undefined) {

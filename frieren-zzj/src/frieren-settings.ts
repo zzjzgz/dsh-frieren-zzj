@@ -8,9 +8,6 @@ export const FRIEREN_SETTINGS_NAMESPACE = 'frieren-zzj'
 /** Master plugin switch: off removes every theme effect and returns the default UI. */
 export const ENABLED_FIELD = 'enabled'
 
-/** Master wallpaper switch. */
-export const WALLPAPER_FIELD = 'wallpaper'
-
 /** User-uploaded custom wallpaper, stored as a downscaled JPEG data URL. */
 export const CUSTOM_WALLPAPER_FIELD = 'customWallpaper'
 
@@ -27,18 +24,25 @@ export const DECOR_VIGNETTE_FIELD = 'decorVignette'
 /** Quote rotation mode for the composer dock line. */
 export const QUOTE_MODE_FIELD = 'quoteMode'
 
-/** Quote rotation modes: one per day, random per change, or the fixed classic line. */
-export const QUOTE_MODES = ['daily', 'random', 'fixed'] as const
+/** Custom fixed quote text (empty = use built-in classic line). */
+export const CUSTOM_QUOTE_FIELD = 'customQuote'
+
+/** Custom random quote list (JSON string array; empty = use built-in library). */
+export const CUSTOM_RANDOM_QUOTES_FIELD = 'customRandomQuotes'
+
+/** Quote rotation modes: random per change, or the fixed line. */
+export const QUOTE_MODES = ['random', 'fixed'] as const
 export type QuoteMode = typeof QUOTE_MODES[number]
 
 /** Defaults mirrored in the schema; reads fall back here while a settings document is absent or stale. */
-export const DEFAULT_QUOTE_MODE: QuoteMode = 'daily'
+export const DEFAULT_QUOTE_MODE: QuoteMode = 'random'
 
 /**
- * Input-bar materials: `glass` applies the fixed frosted-glass treatment
- * (article method: low-alpha background, strong backdrop blur, low-opacity
- * white border, layered shadow — light/dark variants baked in, not
- * user-adjustable); `plain` restores the default input-card surface.
+ * Input-bar materials: `glass` applies the iOS-style frosted-glass treatment
+ * (semi-transparent background, moderate backdrop blur with saturation boost,
+ * translucent white border, soft directional shadow, generous rounding —
+ * light/dark variants baked in, not user-adjustable); `plain` restores the
+ * default input-card surface.
  */
 export const INPUT_MATERIALS = ['glass', 'plain'] as const
 export type InputMaterial = typeof INPUT_MATERIALS[number]
@@ -60,15 +64,23 @@ export interface DecorState {
   vignette: boolean
 }
 
+/** One custom quote entry for the random quote table. */
+export interface CustomQuoteEntry {
+  /** Quote text (the line shown in the dock). */
+  text: string
+  /** Speaker attribution (shown after the dash). */
+  speaker: string
+  /** Optional tooltip gloss. */
+  gloss: string
+}
+
 /** Fully-resolved settings every consumer reads; every field is defined. */
 export type ResolvedFrierenSettings = Required<FrierenSettings>
 
 /** Durable section shared by the Host schema and the browser scope. */
 export interface FrierenSettings {
-  /** Master switch: off disables every theme effect (tokens, chrome, wallpaper, stage, glass). */
+  /** Master switch: off disables every theme effect (wallpaper, decorations, fonts, glass, quotes). */
   enabled: boolean
-  /** Show the watercolor wallpaper scene; off hides the background image and its stage decorations. */
-  wallpaper: boolean
   /** Custom wallpaper data URL ('' = use the built-in image). */
   customWallpaper: string
   /** Input-bar material: frosted glass or plain. */
@@ -81,12 +93,15 @@ export interface FrierenSettings {
   decorVignette: boolean
   /** Quote rotation mode for the composer dock line. */
   quoteMode: QuoteMode
+  /** Custom fixed quote text (empty = use built-in classic Himmel line). */
+  customQuote: string
+  /** Custom random quote list as JSON string array (empty = use built-in library). */
+  customRandomQuotes: string
 }
 
 /** The full default section: what a fresh install and the "restore defaults" action produce. */
 export const DEFAULT_FRIEREN_SETTINGS: ResolvedFrierenSettings = {
   [ENABLED_FIELD]: true,
-  [WALLPAPER_FIELD]: true,
   [CUSTOM_WALLPAPER_FIELD]: '',
   [INPUT_MATERIAL_FIELD]: DEFAULT_INPUT_MATERIAL,
   [DECOR_SPARKLES_FIELD]: true,
@@ -95,12 +110,13 @@ export const DEFAULT_FRIEREN_SETTINGS: ResolvedFrierenSettings = {
   [DECOR_RIBBON_FIELD]: true,
   [DECOR_VIGNETTE_FIELD]: true,
   [QUOTE_MODE_FIELD]: DEFAULT_QUOTE_MODE,
+  [CUSTOM_QUOTE_FIELD]: '',
+  [CUSTOM_RANDOM_QUOTES_FIELD]: '',
 }
 
 /** Durable schema; also the wire envelope the browser scope validates against. */
 export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
   [ENABLED_FIELD]: z.boolean().default(true),
-  [WALLPAPER_FIELD]: z.boolean().default(true),
   [CUSTOM_WALLPAPER_FIELD]: z.string().default(''),
   [INPUT_MATERIAL_FIELD]: z.union([...INPUT_MATERIALS]).default(DEFAULT_INPUT_MATERIAL),
   [DECOR_SPARKLES_FIELD]: z.boolean().default(true),
@@ -109,6 +125,8 @@ export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
   [DECOR_RIBBON_FIELD]: z.boolean().default(true),
   [DECOR_VIGNETTE_FIELD]: z.boolean().default(true),
   [QUOTE_MODE_FIELD]: z.union([...QUOTE_MODES]).default(DEFAULT_QUOTE_MODE),
+  [CUSTOM_QUOTE_FIELD]: z.string().default(''),
+  [CUSTOM_RANDOM_QUOTES_FIELD]: z.string().default(''),
 })
 
 /**
@@ -130,6 +148,34 @@ export function isInputMaterial(value: unknown): value is InputMaterial {
 }
 
 /**
+ * Parse the custom random quotes JSON string into an array of entries.
+ * Returns an empty array on any parse failure or invalid shape.
+ * @param json - the stored JSON string (array of {text, speaker, gloss?}).
+ * @returns the parsed quote entries, or empty on failure.
+ */
+export function parseCustomQuotes(json: string): CustomQuoteEntry[] {
+  if (json === '') return []
+  try {
+    const parsed: unknown = JSON.parse(json)
+    if (!Array.isArray(parsed)) return []
+    const result: CustomQuoteEntry[] = []
+    for (const item of parsed) {
+      if (typeof item !== 'object' || item === null) continue
+      const obj = item as Record<string, unknown>
+      if (typeof obj.text !== 'string' || typeof obj.speaker !== 'string') continue
+      result.push({
+        text: obj.text,
+        speaker: obj.speaker,
+        gloss: typeof obj.gloss === 'string' ? obj.gloss : '',
+      })
+    }
+    return result
+  } catch {
+    return []
+  }
+}
+
+/**
  * Resolve a possibly-stale or partial settings value into a complete section:
  * the wire envelope validates against the schema but returns the stored value
  * as-is (defaults are not materialized), so every consumer reads through here.
@@ -139,7 +185,6 @@ export function isInputMaterial(value: unknown): value is InputMaterial {
 export function resolveSettings(value: Partial<FrierenSettings> | undefined): ResolvedFrierenSettings {
   return {
     enabled: value?.enabled ?? true,
-    wallpaper: value?.wallpaper ?? true,
     customWallpaper: value?.customWallpaper ?? '',
     inputMaterial: isInputMaterial(value?.inputMaterial) ? value.inputMaterial : DEFAULT_INPUT_MATERIAL,
     decorSparkles: value?.decorSparkles ?? true,
@@ -148,5 +193,7 @@ export function resolveSettings(value: Partial<FrierenSettings> | undefined): Re
     decorRibbon: value?.decorRibbon ?? true,
     decorVignette: value?.decorVignette ?? true,
     quoteMode: isQuoteMode(value?.quoteMode) ? value.quoteMode : DEFAULT_QUOTE_MODE,
+    customQuote: value?.customQuote ?? '',
+    customRandomQuotes: value?.customRandomQuotes ?? '',
   }
 }

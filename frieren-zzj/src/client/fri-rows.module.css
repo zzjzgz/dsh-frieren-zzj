@@ -168,6 +168,54 @@
   color: var(--dsw-alias-state-error-primary, #b0554b);
 }
 
+/* Text input for custom quote fields. */
+.textInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
+  background: transparent;
+  color: var(--dsw-alias-label-primary, #322f45);
+  font-size: 12px;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.textInput:focus {
+  border-color: var(--dsw-alias-brand-primary, #5a63b8);
+}
+
+.textInput::placeholder {
+  color: var(--dsw-alias-label-secondary, #6f6a80);
+}
+
+/* Custom random quote table. */
+.quoteTable {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.quoteTableHeader {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr auto;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary, #6f6a80);
+  padding: 0 2px 4px;
+}
+
+.quoteTableRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
 /* Restore-defaults action: a quiet filled button at the end of the section. */
 .resetBtn {
   flex: none;

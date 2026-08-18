@@ -5,15 +5,18 @@ export type FrierenLocaleKey =
   | 'section.nav'
   | 'enable.title' | 'enable.description' | 'enable.on' | 'enable.off'
   | 'reset.title' | 'reset.description' | 'reset.button'
-  | 'wallpaper.title' | 'wallpaper.description' | 'wallpaper.on' | 'wallpaper.off'
   | 'wallpaper.upload.title' | 'wallpaper.upload.description'
   | 'wallpaper.upload.button' | 'wallpaper.upload.clear' | 'wallpaper.upload.busy' | 'wallpaper.upload.error'
   | 'scheme.title' | 'scheme.description' | 'scheme.light' | 'scheme.dark' | 'scheme.system'
   | 'material.title' | 'material.description' | 'material.glass' | 'material.plain'
   | 'decor.title' | 'decor.description'
   | 'decor.sparkles' | 'decor.flowers' | 'decor.circle' | 'decor.ribbon' | 'decor.vignette'
-  | 'quote.title' | 'quote.description' | 'quote.daily' | 'quote.random' | 'quote.fixed'
+  | 'quote.title' | 'quote.description' | 'quote.random' | 'quote.fixed'
   | 'quote.series'
+  | 'quote.custom.title' | 'quote.custom.description' | 'quote.custom.placeholder'
+  | 'quote.randomTable.title' | 'quote.randomTable.description'
+  | 'quote.randomTable.textHeader' | 'quote.randomTable.speakerHeader' | 'quote.randomTable.glossHeader'
+  | 'quote.randomTable.addRow' | 'quote.randomTable.deleteRow' | 'quote.randomTable.empty'
 
 /** English copy. */
 export const en: Record<FrierenLocaleKey, string> = {
@@ -25,10 +28,6 @@ export const en: Record<FrierenLocaleKey, string> = {
   'reset.title': 'Restore defaults',
   'reset.description': 'Reset every Frieren theme setting to its default value and re-enable the plugin.',
   'reset.button': 'Restore defaults',
-  'wallpaper.title': 'Frieren wallpaper',
-  'wallpaper.description': 'Show the watercolor background scene with its stars, blossoms, and magic circle.',
-  'wallpaper.on': 'Wallpaper on',
-  'wallpaper.off': 'Wallpaper off',
   'wallpaper.upload.title': 'Custom wallpaper',
   'wallpaper.upload.description': 'Upload a local image as your wallpaper; clears back to the built-in scene.',
   'wallpaper.upload.button': 'Upload local image',
@@ -53,10 +52,20 @@ export const en: Record<FrierenLocaleKey, string> = {
   'decor.vignette': 'Vignette',
   'quote.title': 'Quotes',
   'quote.description': 'How the quote under the input box rotates.',
-  'quote.daily': 'Daily',
   'quote.random': 'Random',
   'quote.fixed': 'Fixed',
   'quote.series': 'Frieren: Beyond Journey\u2019s End',
+  'quote.custom.title': 'Custom fixed quote',
+  'quote.custom.description': 'Enter a custom line for the fixed mode (empty = built-in classic Himmel line).',
+  'quote.custom.placeholder': 'Enter your custom quote…',
+  'quote.randomTable.title': 'Custom random quotes',
+  'quote.randomTable.description': 'Add your own quotes for random mode (empty = built-in library).',
+  'quote.randomTable.textHeader': 'Quote',
+  'quote.randomTable.speakerHeader': 'Speaker',
+  'quote.randomTable.glossHeader': 'Gloss (optional)',
+  'quote.randomTable.addRow': 'Add row',
+  'quote.randomTable.deleteRow': 'Delete',
+  'quote.randomTable.empty': 'No custom quotes — using built-in library.',
 }
 
 /** Simplified Chinese copy. */
@@ -69,10 +78,6 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'reset.title': '恢复默认设置',
   'reset.description': '把所有芙莉莲主题设置重置为默认值，并重新开启插件。',
   'reset.button': '恢复默认设置',
-  'wallpaper.title': '芙莉莲壁纸',
-  'wallpaper.description': '显示水彩壁纸背景与星光、飘花、魔法阵等装饰。',
-  'wallpaper.on': '壁纸已开启',
-  'wallpaper.off': '壁纸已关闭',
   'wallpaper.upload.title': '自定义壁纸',
   'wallpaper.upload.description': '上传本地图片作为壁纸，可随时恢复内置背景。',
   'wallpaper.upload.button': '上传本地图片',
@@ -97,8 +102,18 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'decor.vignette': '暗角',
   'quote.title': '名台词',
   'quote.description': '输入栏下方名台词的轮换方式。',
-  'quote.daily': '每日一句',
   'quote.random': '随机',
   'quote.fixed': '固定台词',
   'quote.series': '葬送的芙莉莲',
+  'quote.custom.title': '自定义固定台词',
+  'quote.custom.description': '输入固定台词模式的自定义台词（留空 = 使用内置辛美尔经典台词）。',
+  'quote.custom.placeholder': '输入你的自定义台词…',
+  'quote.randomTable.title': '自定义随机台词',
+  'quote.randomTable.description': '为随机模式添加自定义台词列表（留空 = 使用内置台词库）。',
+  'quote.randomTable.textHeader': '台词',
+  'quote.randomTable.speakerHeader': '说话人',
+  'quote.randomTable.glossHeader': '释义（可选）',
+  'quote.randomTable.addRow': '添加一行',
+  'quote.randomTable.deleteRow': '删除',
+  'quote.randomTable.empty': '暂无自定义台词——使用内置台词库。',
 }

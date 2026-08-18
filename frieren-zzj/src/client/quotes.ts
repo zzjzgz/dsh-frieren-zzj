@@ -3,9 +3,12 @@
  * fan-curated flavor lines from 葬送のフリーレン; the zh/en glosses are
  * fan translations (意译), not official. The dock always renders the Japanese
  * original with a localized attribution; the gloss rides the title tooltip.
+ *
+ * Supports custom quotes: a user-supplied fixed line overrides the built-in
+ * classic Himmel line, and a user-supplied list feeds the random mode.
  */
 
-import type { QuoteMode } from '../frieren-settings.ts'
+import type { CustomQuoteEntry } from '../frieren-settings.ts'
 
 /** One quote entry: original Japanese, glosses, and speaker attribution. */
 export interface FrierenQuote {
@@ -81,22 +84,46 @@ export const FRIEREN_QUOTES: readonly FrierenQuote[] = Object.freeze([
   },
 ])
 
-/** Day length in ms; the daily pick advances once per UTC day. */
-const DAY_MS = 86_400_000
+/** The built-in fixed classic line (index 0). */
+const BUILTIN_FIXED = FRIEREN_QUOTES[0]!
 
 /**
- * Pick one quote for the given mode.
- * @param mode - rotation mode; `fixed` always returns the classic Himmel line.
- * @param now - epoch ms; injectable for determinism in tests.
+ * Convert a custom quote entry to the dock's FrierenQuote shape.
+ * Custom entries carry text + speaker + optional gloss; map them into the
+ * same fields so the dock renderer needs no special-casing.
+ */
+function toFrierenQuote(entry: CustomQuoteEntry): FrierenQuote {
+  return {
+    ja: entry.text,
+    zh: entry.gloss,
+    en: entry.gloss,
+    speakerJa: entry.speaker,
+    speakerZh: entry.speaker,
+  }
+}
+
+/**
+ * Pick one quote for the given mode, honoring user-supplied overrides.
+ * @param mode - rotation mode; `fixed` returns the custom or built-in classic line.
+ * @param customQuote - user-supplied fixed quote text (empty = built-in).
+ * @param customQuotes - user-supplied random list (empty = built-in library).
  * @returns the selected quote.
  */
-export function pickQuote(mode: QuoteMode, now: number = Date.now()): FrierenQuote {
-  const index = mode === 'fixed' ? 0
-    : mode === 'random' ? Math.floor(Math.random() * FRIEREN_QUOTES.length)
-      : Math.floor(now / DAY_MS) % FRIEREN_QUOTES.length
-  const quote = FRIEREN_QUOTES[index]
-  // The library is non-empty and every index above is bounded — the throw
-  // exists only to satisfy the unchecked-index type; it cannot fire.
+export function pickQuote(
+  mode: 'random' | 'fixed',
+  customQuote: string = '',
+  customQuotes: readonly CustomQuoteEntry[] = [],
+): FrierenQuote {
+  if (mode === 'fixed') {
+    if (customQuote !== '') {
+      return { ...BUILTIN_FIXED, ja: customQuote, zh: '', en: '', speakerJa: '', speakerZh: '' }
+    }
+    return BUILTIN_FIXED
+  }
+  // random
+  const pool = customQuotes.length > 0 ? customQuotes.map(toFrierenQuote) : FRIEREN_QUOTES
+  const index = Math.floor(Math.random() * pool.length)
+  const quote = pool[index]
   if (quote === undefined) throw new Error(`frieren-zzj: quote index ${index} out of range`)
   return quote
 }

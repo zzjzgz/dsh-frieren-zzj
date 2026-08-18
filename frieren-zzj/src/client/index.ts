@@ -1,14 +1,13 @@
 /**
- * Frieren × Himmel web theme, browser half: the alias-token override layer,
- * the theme chrome stylesheet (fantasy serif headings, gold-lilac scrollbar,
- * seal/badge/dock quote), and — gated by the user-owned settings — the
- * wallpaper stylesheet (watercolor background with per-layer decorations),
- * the custom-wallpaper override, the input-card material stylesheet (fixed
- * frosted glass vs plain; message area stays transparent), and the
- * decorative stage. The settings live in a dedicated "Frieren theme"
- * settings section: wallpaper master switch, appearance (light/dark/system
- * via the theme service), custom wallpaper upload, input-bar material,
- * per-layer decoration toggles, and quote rotation mode. Presentation only:
+ * Frieren × Himmel web theme, browser half: the theme chrome stylesheet
+ * (fantasy serif headings, gold-lilac scrollbar, seal/badge/dock quote),
+ * and — gated by the user-owned settings — the wallpaper stylesheet
+ * (watercolor background with per-layer decorations), the custom-wallpaper
+ * override, the input-card material stylesheet (iOS frosted glass vs plain;
+ * message area stays transparent), and the decorative stage. The settings
+ * live in a dedicated "Frieren theme" settings section: appearance,
+ * custom wallpaper upload, input-bar material, per-layer decoration toggles,
+ * and quote rotation mode with custom quote support. Presentation only:
  * no business state, no model-visible input.
  */
 import * as React from 'react'
@@ -32,7 +31,8 @@ import { GLASS_CSS } from './glass.ts'
 import {
   CUSTOM_WALLPAPER_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
   DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, DEFAULT_FRIEREN_SETTINGS, ENABLED_FIELD,
-  INPUT_MATERIAL_FIELD, QUOTE_MODE_FIELD, resolveSettings, WALLPAPER_FIELD,
+  INPUT_MATERIAL_FIELD, QUOTE_MODE_FIELD, CUSTOM_QUOTE_FIELD, CUSTOM_RANDOM_QUOTES_FIELD,
+  resolveSettings, parseCustomQuotes,
   type DecorState, type InputMaterial, type QuoteMode,
 } from '../frieren-settings.ts'
 import { pickQuote, type FrierenQuote } from './quotes.ts'
@@ -41,29 +41,11 @@ import { FriSettingsBridge } from './fri-settings-bridge.ts'
 import { FriSection } from './FriSection.tsx'
 import { EnableRow, type EnableRowInjected } from './EnableRow.tsx'
 import { ResetRow, type ResetRowInjected } from './ResetRow.tsx'
-import { WallpaperRow, type WallpaperRowInjected } from './WallpaperRow.tsx'
 import { SchemeRow, type SchemeRowInjected } from './SchemeRow.tsx'
 import { WallpaperUploadRow, type WallpaperUploadRowInjected } from './WallpaperUploadRow.tsx'
 import { MaterialRow, type MaterialRowInjected } from './MaterialRow.tsx'
 import { DecorRow, type DecorRowInjected } from './DecorRow.tsx'
 import { QuoteModeRow, type QuoteModeRowInjected } from './QuoteModeRow.tsx'
-
-/** Alias-token overrides: lavender parchment (light) / indigo night (dark). */
-const TOKENS = {
-  '--dsw-alias-bg-base': { light: 'rgba(248,243,236,0.55)', dark: 'rgba(18,19,36,0.72)' },
-  '--dsw-alias-bg-layer-1': { light: '#f3ece8', dark: '#23243f' },
-  '--dsw-alias-bg-layer-2': { light: '#e9e0e4', dark: '#2b2c4e' },
-  '--dsw-alias-bg-overlay': { light: '#faf6f3', dark: '#262744' },
-  '--dsw-alias-border-l1': { light: '#d8ccd8', dark: '#3a3c63' },
-  '--dsw-alias-border-l2': { light: '#b9a8c2', dark: '#54578c' },
-  '--dsw-alias-brand-primary': { light: '#5a63b8', dark: '#9aa3e8' },
-  '--dsw-alias-label-primary': { light: '#322f45', dark: '#ece9f5' },
-  '--dsw-alias-label-secondary': { light: '#6f6a80', dark: '#a9a6c4' },
-  '--dsw-alias-state-error-primary': { light: '#b0554b', dark: '#d98a80' },
-  '--dsw-alias-state-success-primary': { light: '#4e7d63', dark: '#8fbe97' },
-  '--dsw-alias-state-warn-primary': { light: '#c08f3e', dark: '#dcb463' },
-  '--dsw-specific-sidebar-fill': { light: 'rgba(242,234,228,0.55)', dark: 'rgba(16,17,33,0.74)' },
-}
 
 interface SparkleSpec {
   left: string
@@ -133,16 +115,16 @@ function BlueFlower(props: { size: number; className?: string; style?: React.CSS
 
 /** Component props of the decorative stage: the settings-backed selector hooks. */
 type FriStageProps = InjectFace<{ hooks: {
-  wallpaperEnabled: BareObservable<boolean>
+  enabled: BareObservable<boolean>
   decor: BareObservable<DecorState>
 } }>
 
 /** Frame-wide decorative stage: glow, sparkles, falling flowers, magic circle, ribbon, vignette. */
-function FriStage({ useWallpaperEnabled, useDecor }: FriStageProps): React.ReactElement | null {
+function FriStage({ useEnabled, useDecor }: FriStageProps): React.ReactElement | null {
   // Both hooks run unconditionally: an early return between hook calls would
   // trip React's rules-of-hooks (error #300) and crash the slot entry the
-  // moment the wallpaper switch turns off.
-  const enabled = useWallpaperEnabled(enabled => enabled)
+  // moment the switch turns off.
+  const enabled = useEnabled(enabled => enabled)
   const decor = useDecor(value => value)
   if (enabled === false) return null
   const sparkles = decor?.sparkles ?? true
@@ -223,7 +205,7 @@ function FriQuote({ t, useQuote, useEnabled }: FriQuoteProps): React.ReactElemen
   return React.createElement('div', { className: 'fri-dock', title: quote.zh },
     React.createElement('span', { className: 'fri-dock-star', 'aria-hidden': true }, '✦'),
     React.createElement('span', null, quote.ja),
-    React.createElement('span', { className: 'fri-dock-sub' }, `—— ${quote.speakerJa} · ${t('quote.series')}`),
+    quote.speakerJa !== '' && React.createElement('span', { className: 'fri-dock-sub' }, `—— ${quote.speakerJa} · ${t('quote.series')}`),
   )
 }
 
@@ -250,13 +232,13 @@ const LOCALE_NS = 'settings.frieren'
 export const inject = ['theme', 'slots', 'locale']
 
 /**
- * Client plugin body: gate every effect (token layer, theme chrome
- * stylesheet, wallpaper stylesheet, custom-wallpaper override, input-card
- * material, decorative stage, seal, badge, dock quote) on the user-owned
- * `enabled` master switch plus their individual settings, and register the
- * "Frieren theme" settings section with its rows (master switch, wallpaper,
- * appearance, upload, material, decorations, quote mode, restore defaults).
- * Every side effect is owned by this plugin's fiber and removed on dispose.
+ * Client plugin body: gate every effect (theme chrome stylesheet, wallpaper
+ * stylesheet, custom-wallpaper override, input-card material, decorative stage,
+ * seal, badge, dock quote) on the user-owned `enabled` master switch plus their
+ * individual settings, and register the "Frieren theme" settings section with
+ * its rows (master switch, appearance, upload, material, decorations, quote
+ * mode with custom quote support, restore defaults). Every side effect is owned
+ * by this plugin's fiber and removed on dispose.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
@@ -274,28 +256,6 @@ export function apply(ctx: ClientContext): void {
     const snapshot = scope.getSnapshot()
     return resolveSettings(snapshot.status === 'ready' ? snapshot.value : undefined)
   }
-
-  // Alias-token layer: mounted exactly while the master switch AND the
-  // wallpaper switch are on, so turning either off restores the stock alias
-  // palette without a reload. Without this gate, closing the wallpaper would
-  // leave the lavender/indigo token overrides active — the app would stay
-  // pink-tinted instead of returning to its original white/black surfaces.
-  ctx.effect(() => {
-    let disposeTokens: (() => void) | undefined
-    const sync = (): void => {
-      const s = settingsOf()
-      const on = s.enabled && s.wallpaper
-      if (on && disposeTokens === undefined) {
-        disposeTokens = ctx.theme.overrideTokens('frieren-theme', TOKENS)
-      } else if (!on && disposeTokens !== undefined) {
-        disposeTokens()
-        disposeTokens = undefined
-      }
-    }
-    sync()
-    const unsubscribe = scope.subscribe(sync)
-    return () => { unsubscribe(); disposeTokens?.() }
-  }, 'frieren-zzj: token layer')
 
   // Theme chrome: fonts, scrollbar, seal, badge, dock quote — present exactly
   // while the master switch is on.
@@ -318,11 +278,6 @@ export function apply(ctx: ClientContext): void {
   // Observable sources the stage, dock, and rows bind through use<Name> hooks.
   const enabledSource: BareObservable<boolean> = {
     getSnapshot: () => settingsOf().enabled,
-    subscribe: (fn) => scope.subscribe(fn),
-  }
-
-  const wallpaperSource: BareObservable<boolean> = {
-    getSnapshot: () => settingsOf().enabled && settingsOf().wallpaper,
     subscribe: (fn) => scope.subscribe(fn),
   }
 
@@ -362,6 +317,11 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => scope.subscribe(fn),
   }
 
+  const customQuoteSource: BareObservable<string> = {
+    getSnapshot: () => settingsOf().customQuote,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
   // Quote resolution: one stable quote per settings revision, so random mode
   // re-rolls only when the mode (or any settings change) bumps the revision.
   let quoteCache: { revision: number | undefined; quote: FrierenQuote } | undefined
@@ -369,7 +329,9 @@ export function apply(ctx: ClientContext): void {
     getSnapshot: () => {
       const revision = scope.getSnapshot().revision
       if (quoteCache === undefined || quoteCache.revision !== revision) {
-        quoteCache = { revision, quote: pickQuote(settingsOf().quoteMode) }
+        const s = settingsOf()
+        const customQuotes = parseCustomQuotes(s.customRandomQuotes)
+        quoteCache = { revision, quote: pickQuote(s.quoteMode, s.customQuote, customQuotes) }
       }
       return quoteCache.quote
     },
@@ -383,15 +345,12 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => ctx.on('theme/change', fn),
   }
 
-  // Wallpaper stylesheet: present exactly while the plugin and the master
-  // wallpaper switch are on, so turning either off restores the plain app
-  // background without a reload.
+  // Wallpaper stylesheet: present exactly while the plugin is on.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj-wallpaper'
     const sync = (): void => {
-      const s = settingsOf()
-      if (s.enabled && s.wallpaper) {
+      if (settingsOf().enabled) {
         if (!tag.isConnected) {
           tag.textContent = FRI_WALLPAPER_CSS
           document.head.appendChild(tag)
@@ -406,10 +365,10 @@ export function apply(ctx: ClientContext): void {
   }, 'frieren-zzj: wallpaper stylesheet')
 
   // Custom wallpaper override: replaces the body background image layer while
-  // a user upload is set (and the plugin + wallpaper switch are on), keeping
-  // the dark-mode dimming gradient. The data URL is a JPEG base64 string — no
-  // escaping risk. Re-uploads must rewrite the text even while the tag is
-  // already mounted: the style only ever holds ONE background URL, so an
+  // a user upload is set (and the plugin is on), keeping the dark-mode
+  // dimming gradient. The data URL is a JPEG base64 string — no escaping
+  // risk. Re-uploads must rewrite the text even while the tag is already
+  // mounted: the style only ever holds ONE background URL, so an
   // already-connected tag is stale the moment a new image lands.
   ctx.effect(() => {
     const tag = document.createElement('style')
@@ -417,7 +376,7 @@ export function apply(ctx: ClientContext): void {
     const sync = (): void => {
       const s = settingsOf()
       const custom = s.customWallpaper
-      const active = s.enabled && s.wallpaper && custom !== ''
+      const active = s.enabled && custom !== ''
       if (active) {
         tag.textContent = `body { background-image: url("${custom}") !important; }
 @media (prefers-color-scheme: dark) {
@@ -434,7 +393,7 @@ export function apply(ctx: ClientContext): void {
   }, 'frieren-zzj: custom wallpaper stylesheet')
 
   // Input-card material stylesheet: present exactly while the plugin is on
-  // and the material is 'glass' (fixed frosted look); 'plain' removes it and
+  // and the material is 'glass' (iOS frosted look); 'plain' removes it and
   // the card falls back to its default surface. Dark rules ride
   // `body[data-ds-dark-theme]`, so the dark glass follows the user's manual
   // light/dark/system preference.
@@ -464,7 +423,7 @@ export function apply(ctx: ClientContext): void {
     order: 100,
     inject: () => ({
       hooks: {
-        wallpaperEnabled: wallpaperSource,
+        enabled: enabledSource,
         decor: decorSource,
       },
     }),
@@ -519,17 +478,6 @@ export function apply(ctx: ClientContext): void {
       hooks: { enabled: enabledSource },
     }),
   }, EnableRow))
-
-  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
-    name: 'settings.frieren.item',
-    id: 'frieren-wallpaper',
-    order: 10,
-    locale: LOCALE_NS,
-    inject: (): WallpaperRowInjected => ({
-      setWallpaper: (enabled: boolean) => { void scope.set(WALLPAPER_FIELD, enabled) },
-      hooks: { wallpaperEnabled: wallpaperSource, enabled: enabledSource },
-    }),
-  }, WallpaperRow))
 
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',
@@ -590,7 +538,14 @@ export function apply(ctx: ClientContext): void {
     locale: LOCALE_NS,
     inject: (): QuoteModeRowInjected => ({
       setQuoteMode: (mode: QuoteMode) => { void scope.set(QUOTE_MODE_FIELD, mode) },
-      hooks: { quoteMode: quoteModeSource, enabled: enabledSource },
+      setCustomQuote: (text: string) => { void scope.set(CUSTOM_QUOTE_FIELD, text) },
+      setCustomRandomQuotes: (json: string) => { void scope.set(CUSTOM_RANDOM_QUOTES_FIELD, json) },
+      hooks: {
+        quoteMode: quoteModeSource,
+        customQuote: customQuoteSource,
+        customRandomQuotes: { getSnapshot: () => settingsOf().customRandomQuotes, subscribe: (fn) => scope.subscribe(fn) },
+        enabled: enabledSource,
+      },
     }),
   }, QuoteModeRow))
 

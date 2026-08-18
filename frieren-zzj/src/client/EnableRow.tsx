@@ -6,7 +6,7 @@
  */
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import css from './WallpaperRow.module.css'
+import css from './fri-rows.module.css'
 
 /** Registrant-private business face: the master write plus its observable. */
 export interface EnableRowInjected {

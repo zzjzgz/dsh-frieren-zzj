@@ -379,12 +379,34 @@ export function apply(ctx: ClientContext): void {
   }, 'frieren-zzj: decor stylesheet')
 
   // Custom wallpaper layer: when a user uploads an image, a fixed full-screen
-  // <div> is mounted as the body's background. This approach is completely
-  // independent of the body element's own CSS (which the host app controls),
-  // avoiding all cross-priority conflicts. The opacity slider controls the
-  // layer's CSS `opacity` property directly. Initial state is NO wallpaper
-  // (the div is absent), giving users a clean slate.
+  // <div> is mounted BEHIND the body (z-index:-2). The key insight (borrowed
+  // from dsh-wallpaper-engine) is that the DSH app frame paints an opaque
+  // background via the --dsw-alias-bg-base token, which would completely hide
+  // a z-index:-1 layer. To make the wallpaper visible, we set a body attribute
+  // `data-frieren-wallpaper` and inject CSS that overrides --dsw-alias-bg-base
+  // (and the sidebar fill) to transparent while a wallpaper is active. The
+  // opacity slider controls the layer's CSS `opacity` property directly.
+  // Initial state is NO wallpaper (the div is absent).
   ctx.effect(() => {
+    // Inject the transparency CSS once (idempotent).
+    const transparencyTag = document.createElement('style')
+    transparencyTag.dataset.pluginCss = 'frieren-zzj-wallpaper-transparency'
+    transparencyTag.textContent = `
+body[data-frieren-wallpaper] {
+  --dsw-alias-bg-base: transparent;
+  --dsw-specific-sidebar-fill: transparent;
+}
+body[data-frieren-wallpaper] {
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.15);
+  --dsw-specific-bubble: rgba(255, 255, 255, 0.12);
+}
+body[data-ds-dark-theme][data-frieren-wallpaper] {
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.06);
+  --dsw-specific-bubble: rgba(255, 255, 255, 0.05);
+}
+`
+    document.head.appendChild(transparencyTag)
+
     let layer: HTMLDivElement | null = null
     const sync = (): void => {
       const s = settingsOf()
@@ -393,22 +415,27 @@ export function apply(ctx: ClientContext): void {
       if (s.enabled && custom !== '') {
         if (layer === null) {
           layer = document.createElement('div')
-          layer.dataset.frierenWallpaper = ''
-          layer.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;'
-          document.body.insertAdjacentElement('afterbegin', layer)
+          layer.dataset.frierenWallpaperLayer = ''
+          layer.style.cssText = 'position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;'
+          document.body.appendChild(layer)
         }
         // Always update: re-uploads change the URL and the opacity slider
         // changes the opacity value continuously.
         layer.style.backgroundImage = `url("${custom}")`
         layer.style.opacity = String(Math.max(0, Math.min(100, opacity)) / 100)
-      } else if (layer !== null) {
-        layer.remove()
-        layer = null
+        // Mark the body so the transparency CSS kicks in.
+        document.body.setAttribute('data-frieren-wallpaper', 'on')
+      } else {
+        if (layer !== null) {
+          layer.remove()
+          layer = null
+        }
+        document.body.removeAttribute('data-frieren-wallpaper')
       }
     }
     sync()
     const unsubscribe = scope.subscribe(sync)
-    return () => { unsubscribe(); if (layer !== null) layer.remove() }
+    return () => { unsubscribe(); transparencyTag.remove(); if (layer !== null) layer.remove(); document.body.removeAttribute('data-frieren-wallpaper') }
   }, 'frieren-zzj: custom wallpaper layer')
 
   // Input-card material stylesheet: present exactly while the plugin is on

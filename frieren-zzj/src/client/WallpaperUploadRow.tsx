@@ -4,7 +4,7 @@
  * `frieren-zzj` settings section), with a preview thumbnail, a remove action,
  * and an opacity slider.
  */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import css from './fri-rows.module.css'
@@ -82,10 +82,24 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, setWallpaperOpacity, useCustomWallpaper, useWallpaperOpacity, useEnabled }: WallpaperUploadRowProps) {
   const pluginEnabled = useEnabled(value => value)
   const custom = useCustomWallpaper(value => value) ?? ''
-  const opacity = useWallpaperOpacity(value => value) ?? 100
+  const persistedOpacity = useWallpaperOpacity(value => value) ?? 100
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  // Local state for the slider: tracks the drag in real time so the UI is
+  // responsive. The persisted value syncs back when settings load/confirm.
+  const [dragOpacity, setDragOpacity] = useState(persistedOpacity)
   const inputRef = useRef<HTMLInputElement>(null)
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sync local state when the persisted value changes externally (e.g. after
+  // a confirmed write or a reset-to-defaults).
+  useEffect(() => { setDragOpacity(persistedOpacity) }, [persistedOpacity])
+
+  // Clean up the debounce timer on unmount.
+  useEffect(() => {
+    return () => { if (persistTimer.current !== null) clearTimeout(persistTimer.current) }
+  }, [])
+
   if (pluginEnabled === false) return null
 
   const onFile = async (file: File | undefined): Promise<void> => {
@@ -135,7 +149,11 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
       </div>
       {failed && <div className={css.error}>{t('wallpaper.upload.error')}</div>}
 
-      {/* Opacity slider — only visible when a wallpaper is set */}
+      {/* Opacity slider — only visible when a wallpaper is set.
+           The slider uses local state for instant visual feedback; the DOM
+           wallpaper layer's opacity is updated directly on input, while the
+           persisted write is debounced so dragging doesn't flood the settings
+           bridge with HTTP requests (the root cause of the laggy slider). */}
       {custom !== '' && (
         <div className={css.groupColumn} style={{ paddingLeft: 0, paddingRight: 0, paddingBottom: 0, borderBottom: 'none' }}>
           <div className={css.copy}>
@@ -147,12 +165,33 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
               type="range"
               min="0"
               max="100"
-              step="5"
-              value={opacity}
+              step="1"
+              value={dragOpacity}
               className={css.slider}
-              onChange={(e) => { setWallpaperOpacity(Number(e.target.value)) }}
+              onInput={(e) => {
+                const v = Number(e.target.value)
+                // 1. Instant local state (updates the % label).
+                setDragOpacity(v)
+                // 2. Directly poke the wallpaper layer's opacity (instant visual
+                //    feedback — no round-trip through settings → HTTP → re-render).
+                const layer = document.querySelector('[data-frieren-wallpaper-layer]')
+                if (layer instanceof HTMLElement) {
+                  layer.style.opacity = String(Math.max(0, Math.min(100, v)) / 100)
+                }
+                // 3. Debounce the persisted write so rapid drags don't spam
+                //    the settings bridge with PUT requests.
+                if (persistTimer.current !== null) clearTimeout(persistTimer.current)
+                persistTimer.current = setTimeout(() => { setWallpaperOpacity(v) }, 400)
+              }}
+              onChange={(e) => {
+                // Final commit on release (fires after the last onInput).
+                const v = Number(e.target.value)
+                setDragOpacity(v)
+                if (persistTimer.current !== null) clearTimeout(persistTimer.current)
+                setWallpaperOpacity(v)
+              }}
             />
-            <span className={css.sliderValue}>{opacity}%</span>
+            <span className={css.sliderValue}>{dragOpacity}%</span>
           </div>
         </div>
       )}

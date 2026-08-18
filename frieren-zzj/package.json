@@ -1,7 +1,7 @@
 {
   "name": "@zengzhaojun/dsh-client-frieren-zzj",
   "description": "dsh-芙莉莲-zzj — Frieren × Himmel web theme: alias-token overrides, global stylesheet (fantasy serif headings, gold-lilac scrollbar, sparkles, blue-moon-weed flowers, magic circles), decorative slot entries, and a Frieren theme settings section (custom wallpaper upload with opacity control, appearance, overall material (glass / plain), per-layer decorations, quote rotation)",
-  "version": "0.1.0-rc.31",
+  "version": "0.1.0-rc.33",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
@@ -59,9 +59,9 @@
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-layout": "^0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.5",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-invariants": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.5",
@@ -72,15 +72,16 @@
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-layout": "^0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.5",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-invariants": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.5",
     "@deepseek-ai/schemastery": "^3.18.1",
     "@types/react": "~18.3.1",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "tsdown": "^0.22.14"
   },
   "files": [
     "lib/index.js",
@@ -90,11 +91,3 @@
     "lib/types/**/*.d.ts"
   ]
 }
-
-
-
-
-
-
-
-

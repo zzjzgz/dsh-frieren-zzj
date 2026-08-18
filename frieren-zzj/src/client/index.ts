@@ -26,7 +26,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // 'settings.general.item').
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { FRI_BASE_CSS } from './fri-base.css.ts'
-import { FRI_WALLPAPER_CSS } from './fri-theme.css.ts'
+import { FRI_DECOR_CSS } from './fri-theme.css.ts'
 import { GLASS_CSS } from './glass.ts'
 import {
   CUSTOM_WALLPAPER_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
@@ -348,41 +348,58 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => ctx.on('theme/change', fn),
   }
 
-  // Wallpaper stylesheet: present exactly while the plugin is on. When a
-  // custom wallpaper data URL is set, it replaces the built-in background
-  // image — using the `background:` shorthand so every sub-property is
-  // overridden (a bare `background-image` rule can lose the cascade war
-  // against the built-in `background:` shorthand when both are `!important`
-  // and tag order is unstable). Keeping both rules in one tag eliminates the
-  // ordering hazard entirely.
+  // Decor CSS: .fri-stage and all decoration element styles. Always present
+  // while the plugin is on, independent of whether a wallpaper is set —
+  // decorations (sparkles, flowers, magic circle, ribbon, vignette, glow)
+  // are visual overlays that work on any background, including none.
+  // Previously these rules were bundled inside FRI_WALLPAPER_CSS, which
+  // caused them to vanish when the built-in wallpaper was absent — the
+  // root cause of decorations collapsing to the top-left corner.
+  ctx.effect(() => {
+    const tag = document.createElement('style')
+    tag.dataset.pluginCss = 'frieren-zzj-decor'
+    const sync = (): void => {
+      if (settingsOf().enabled) {
+        if (!tag.isConnected) {
+          tag.textContent = FRI_DECOR_CSS
+          document.head.appendChild(tag)
+        }
+      } else if (tag.isConnected) {
+        tag.remove()
+      }
+    }
+    sync()
+    const unsubscribe = scope.subscribe(sync)
+    return () => { unsubscribe(); tag.remove() }
+  }, 'frieren-zzj: decor stylesheet')
+
+  // Custom wallpaper: when a user uploads an image, it becomes the body
+  // background. Initial state is NO wallpaper (transparent body). The built-in
+  // watercolor background is no longer injected — users start with a clean
+  // slate and optionally upload their own. Uses the `background:` shorthand
+  // so every sub-property is controlled in one rule.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj-wallpaper'
     const sync = (): void => {
       const s = settingsOf()
-      if (!s.enabled) {
-        if (tag.isConnected) tag.remove()
-        return
-      }
       const custom = s.customWallpaper
-      // When a custom wallpaper is set, override the built-in body background
-      // with the user's image (using the shorthand so position/size/reset are
-      // all controlled). Otherwise, inject the built-in wallpaper CSS (which
-      // defines `--fri-bg` and the body background rule).
-      if (custom !== '') {
+      if (s.enabled && custom !== '') {
+        // Always rewrite textContent: re-uploads change the URL but the tag
+        // is already connected, so we must update in-place.
         tag.textContent = `body { background: url("${custom}") center / cover no-repeat fixed !important; }
 @media (prefers-color-scheme: dark) {
   body { background: linear-gradient(rgba(15,16,32,0.36), rgba(15,16,32,0.36)), url("${custom}") center / cover no-repeat fixed !important; }
 }`
-      } else {
-        tag.textContent = FRI_WALLPAPER_CSS
+        if (!tag.isConnected) document.head.appendChild(tag)
+      } else if (tag.isConnected) {
+        tag.remove()
       }
-      if (!tag.isConnected) document.head.appendChild(tag)
     }
     sync()
     const unsubscribe = scope.subscribe(sync)
     return () => { unsubscribe(); tag.remove() }
-  }, 'frieren-zzj: wallpaper stylesheet')
+  }, 'frieren-zzj: custom wallpaper stylesheet')
 
   // Input-card material stylesheet: present exactly while the plugin is on
   // and the material is 'glass' (iOS frosted look); 'plain' removes it and

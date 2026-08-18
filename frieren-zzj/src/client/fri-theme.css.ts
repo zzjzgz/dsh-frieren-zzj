@@ -130,3 +130,122 @@ body {
 }
 
 `
+
+
+/** Decor-only CSS: .fri-stage and all decoration element styles.
+ * Extracted from FRI_WALLPAPER_CSS so decorations work even without a
+ * built-in wallpaper background (initial state: no wallpaper, decorations visible). */
+export const FRI_DECOR_CSS = `
+.fri-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.fri-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 8% 92%, rgba(90, 99, 184, 0.05) 0%, transparent 42%),
+    radial-gradient(circle at 92% 8%, rgba(220, 180, 99, 0.04) 0%, transparent 36%);
+}
+
+.fri-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 62%, rgba(88, 92, 168, 0.06) 100%);
+}
+
+.fri-ribbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #9aa3e8, #d9a8c8, #e8c9cf, #dcb463);
+  opacity: 0.85;
+}
+
+.fri-sparkle {
+  position: absolute;
+  opacity: 0;
+  text-shadow: 0 0 6px currentColor;
+  animation-name: fri-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+.fri-sparkle-gold { color: var(--dsw-alias-state-warn-primary, #dcb463); }
+.fri-sparkle-peri { color: var(--dsw-alias-brand-primary, #9aa3e8); }
+
+@keyframes fri-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  50% { opacity: 0.55; transform: scale(1.15) rotate(20deg); }
+}
+
+.fri-flower {
+  position: absolute;
+  top: -40px;
+  animation: fri-fall linear infinite;
+  filter: drop-shadow(0 0 3px rgba(143, 168, 224, 0.45));
+}
+@keyframes fri-fall {
+  0% { transform: translate3d(0, -6vh, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  50% { transform: translate3d(2.5vw, 50vh, 0) rotate(160deg); }
+  100% { transform: translate3d(-1.5vw, 108vh, 0) rotate(320deg); opacity: 0; }
+}
+
+.fri-circle {
+  position: absolute;
+  right: -110px;
+  top: -110px;
+  width: 340px;
+  height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.20;
+}
+.fri-circle-glow {
+  position: absolute;
+  inset: -50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(154, 163, 232, 0.14), transparent 65%);
+  filter: blur(6px);
+}
+.fri-circle-ring { position: absolute; inset: 0; border-radius: 50%; }
+.fri-circle-ring-a {
+  border: 1px dashed var(--dsw-alias-brand-primary, #9aa3e8);
+  animation: fri-spin 60s linear infinite;
+}
+.fri-circle-ring-b {
+  inset: 24px;
+  border: 1px solid var(--dsw-alias-state-warn-primary, #dcb463);
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  opacity: 0.7;
+  animation: fri-spin 30s linear infinite reverse;
+}
+.fri-circle-ring-c {
+  inset: 48px;
+  background: repeating-conic-gradient(from 0deg, var(--dsw-alias-brand-primary, #9aa3e8) 0deg 7deg, transparent 7deg 26deg);
+  border-radius: 50%;
+  opacity: 0.55;
+  -webkit-mask: radial-gradient(circle, transparent 60%, black 62% 84%, transparent 86%);
+  mask: radial-gradient(circle, transparent 60%, black 62% 84%, transparent 86%);
+  animation: fri-spin 22s linear infinite reverse;
+}
+.fri-circle-core {
+  font-size: 18px;
+  color: var(--dsw-alias-brand-primary, #9aa3e8);
+  text-shadow: 0 0 10px currentColor;
+}
+
+@keyframes fri-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+`

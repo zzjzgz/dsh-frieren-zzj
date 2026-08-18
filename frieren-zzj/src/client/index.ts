@@ -29,7 +29,7 @@ import { FRI_BASE_CSS } from './fri-base.css.ts'
 import { FRI_DECOR_CSS } from './fri-theme.css.ts'
 import { GLASS_CSS } from './glass.ts'
 import {
-  CUSTOM_WALLPAPER_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
+  CUSTOM_WALLPAPER_FIELD, WALLPAPER_OPACITY_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
   DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, DEFAULT_FRIEREN_SETTINGS, ENABLED_FIELD,
   INPUT_MATERIAL_FIELD, QUOTE_MODE_FIELD, CUSTOM_QUOTE_FIELD, CUSTOM_RANDOM_QUOTES_FIELD,
   resolveSettings, parseCustomQuotes,
@@ -310,6 +310,11 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => scope.subscribe(fn),
   }
 
+  const wallpaperOpacitySource: BareObservable<number> = {
+    getSnapshot: () => settingsOf().wallpaperOpacity,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
   const materialSource: BareObservable<InputMaterial> = {
     getSnapshot: () => settingsOf().inputMaterial,
     subscribe: (fn) => scope.subscribe(fn),
@@ -373,33 +378,38 @@ export function apply(ctx: ClientContext): void {
     return () => { unsubscribe(); tag.remove() }
   }, 'frieren-zzj: decor stylesheet')
 
-  // Custom wallpaper: when a user uploads an image, it becomes the body
-  // background. Initial state is NO wallpaper (transparent body). The built-in
-  // watercolor background is no longer injected — users start with a clean
-  // slate and optionally upload their own. Uses the `background:` shorthand
-  // so every sub-property is controlled in one rule.
+  // Custom wallpaper layer: when a user uploads an image, a fixed full-screen
+  // <div> is mounted as the body's background. This approach is completely
+  // independent of the body element's own CSS (which the host app controls),
+  // avoiding all cross-priority conflicts. The opacity slider controls the
+  // layer's CSS `opacity` property directly. Initial state is NO wallpaper
+  // (the div is absent), giving users a clean slate.
   ctx.effect(() => {
-    const tag = document.createElement('style')
-    tag.dataset.pluginCss = 'frieren-zzj-wallpaper'
+    let layer: HTMLDivElement | null = null
     const sync = (): void => {
       const s = settingsOf()
       const custom = s.customWallpaper
+      const opacity = s.wallpaperOpacity
       if (s.enabled && custom !== '') {
-        // Always rewrite textContent: re-uploads change the URL but the tag
-        // is already connected, so we must update in-place.
-        tag.textContent = `body { background: url("${custom}") center / cover no-repeat fixed !important; }
-@media (prefers-color-scheme: dark) {
-  body { background: linear-gradient(rgba(15,16,32,0.36), rgba(15,16,32,0.36)), url("${custom}") center / cover no-repeat fixed !important; }
-}`
-        if (!tag.isConnected) document.head.appendChild(tag)
-      } else if (tag.isConnected) {
-        tag.remove()
+        if (layer === null) {
+          layer = document.createElement('div')
+          layer.dataset.frierenWallpaper = ''
+          layer.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;'
+          document.body.insertAdjacentElement('afterbegin', layer)
+        }
+        // Always update: re-uploads change the URL and the opacity slider
+        // changes the opacity value continuously.
+        layer.style.backgroundImage = `url("${custom}")`
+        layer.style.opacity = String(Math.max(0, Math.min(100, opacity)) / 100)
+      } else if (layer !== null) {
+        layer.remove()
+        layer = null
       }
     }
     sync()
     const unsubscribe = scope.subscribe(sync)
-    return () => { unsubscribe(); tag.remove() }
-  }, 'frieren-zzj: custom wallpaper stylesheet')
+    return () => { unsubscribe(); if (layer !== null) layer.remove() }
+  }, 'frieren-zzj: custom wallpaper layer')
 
   // Input-card material stylesheet: present exactly while the plugin is on
   // and the material is 'glass' (iOS frosted look); 'plain' removes it and
@@ -507,7 +517,8 @@ export function apply(ctx: ClientContext): void {
     inject: (): WallpaperUploadRowInjected => ({
       setCustomWallpaper: (dataUrl: string) => { void scope.set(CUSTOM_WALLPAPER_FIELD, dataUrl) },
       clearCustomWallpaper: () => { void scope.set(CUSTOM_WALLPAPER_FIELD, '') },
-      hooks: { customWallpaper: customWallpaperSource, enabled: enabledSource },
+      setWallpaperOpacity: (opacity: number) => { void scope.set(WALLPAPER_OPACITY_FIELD, opacity) },
+      hooks: { customWallpaper: customWallpaperSource, wallpaperOpacity: wallpaperOpacitySource, enabled: enabledSource },
     }),
   }, WallpaperUploadRow))
 

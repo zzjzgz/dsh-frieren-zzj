@@ -271,6 +271,70 @@ body[data-ds-dark-theme] .textInput::placeholder {
   color: var(--dsw-alias-state-error-primary, #b0554b);
 }
 
+/* Opacity slider for the wallpaper transparency control. */
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.slider {
+  flex: 1;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dsw-alias-border-l2, #b9a8c2);
+  outline: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--dsw-alias-brand-primary, #5a63b8);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--dsw-alias-brand-primary, #5a63b8);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #5a63b8);
+  outline-offset: 2px;
+}
+
+.sliderValue {
+  flex: none;
+  min-width: 36px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary, #322f45);
+}
+
+body[data-ds-dark-theme] .slider {
+  background: var(--dsw-alias-border-l2, #54578c);
+}
+
+body[data-ds-dark-theme] .sliderValue {
+  color: var(--dsw-alias-label-primary, #ece9f5);
+}
+
 /* Text input for custom quote fields. */
 .textInput {
   flex: 1;

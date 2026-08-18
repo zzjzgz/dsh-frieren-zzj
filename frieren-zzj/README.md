@@ -3,10 +3,11 @@
 dsh-芙莉莲-zzj — Frieren × Himmel (葬送のフリーレン) decorative web theme: an
 alias-token override layer, a global stylesheet, and decorative slot entries. The browser
 half stacks the token layer through the theme service, injects the global
-stylesheet (embedded watercolor background scene, fantasy serif headings,
-gold-lilac scrollbar, sparkles, blue-moon-weed flowers, magic circles), and
+stylesheet (fantasy serif headings, gold-lilac scrollbar, sparkles,
+blue-moon-weed flowers, magic circles), and
 registers the frame stage, the hero seal, the header badge, and the rotating
-Himmel dock quote into their slots.
+Himmel dock quote into their slots. Initial state has NO wallpaper; users can
+upload their own image as the full-page background and adjust its opacity.
 
 ## Configuration
 
@@ -18,16 +19,21 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
   token layer, chrome stylesheet, wallpaper, stage, glass, seal, badge, dock
   quote — so the app returns to its default look; the section keeps only the
   switch and the restore button so it can always be turned back on,
-- wallpaper master switch (opt-out; defaults on),
 - appearance (light / dark / system — rides the theme service's own
   `ui-theme` preference namespace, in sync with the built-in Appearance row),
 - custom wallpaper upload stored as a downscaled JPEG data URL in the
-  settings document (uploading again replaces the image; restore-built-in
-  clears it),
-- input-bar material (glass / plain): `glass` applies a FIXED frosted look to
+  settings document (uploading again replaces the image; "remove wallpaper"
+  clears it). Initial state is NO wallpaper; after upload, the image renders
+  as an independent fixed layer (`position:fixed; z-index:-1`) that does not
+  interfere with the body's own CSS,
+- **wallpaper opacity** (0%–100%): a slider that adjusts the CSS `opacity` of
+  the wallpaper layer in real time (0% = invisible, 100% = fully opaque);
+  only shown when a wallpaper is set,
+- overall material (glass / plain): `glass` applies a FIXED frosted look to
   the input card (`[data-composer-card]`), the task-list dock card
-  (`[data-testid='todo-panel']`), and the goal dock card
-  (`[data-goal-bar] > :first-child` — the dock's only child IS the card)
+  (`[data-testid='todo-panel']`), the goal dock card
+  (`[data-goal-bar] > :first-child`), and the settings panel
+  (`[role="dialog"][aria-modal="true"]`)
   via `backdrop-filter`, following the OceanAvenu Dark Glass method
   (https://blog.csdn.net/qq_43433246/article/details/162127888): very
   low-alpha background, strong blur (28px light / 40px dark), low-opacity
@@ -42,8 +48,9 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
   vignette),
 - quote rotation mode (daily / random / fixed) over an 8-line quote library,
 - **restore defaults** button (at the bottom): replaces the whole section with
-  the default values (also clears the custom wallpaper and stale fields from
-  older plugin versions) and re-enables the plugin.
+  the default values (no wallpaper, glass material, all decorations on, random
+  quote mode, opacity reset to 100%, clears custom wallpaper and stale fields
+  from older plugin versions) and re-enables the plugin.
 
 All rows read through a revision-cached observable; every field falls back to
 its default while no settings document is present.
@@ -61,11 +68,8 @@ eviction remain outside the package contract.
 
 ## Known Limitations and Deferred Work
 
-- The background scene is embedded as a base64 data URL inside the client
-  bundle (about 0.5 MB), keeping the image self-contained at the cost of
-  bundle size.
 - Custom wallpapers persist as JPEG data URLs inside the user settings
-  document (uploads are downscaled to a 1600px long edge first).
+  document (uploads are downscaled to a 1920px long edge first).
 - Quote lines are fan-curated Japanese originals with fan glosses, not
   official translations.
 - Heading fonts load from Google Fonts at runtime; offline sessions fall back

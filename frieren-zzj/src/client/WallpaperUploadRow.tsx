@@ -1,8 +1,8 @@
 /**
  * Custom wallpaper row in the Frieren theme section: upload a local image as
  * the wallpaper (stored as a downscaled JPEG data URL in the durable
- * `frieren-zzj` settings section), with a preview thumbnail and a
- * restore-built-in action.
+ * `frieren-zzj` settings section), with a preview thumbnail, a remove action,
+ * and an opacity slider.
  */
 import { useRef, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -13,12 +13,18 @@ import css from './fri-rows.module.css'
 export interface WallpaperUploadRowInjected {
   /** Persist an uploaded image as the custom wallpaper (downscaled data URL). */
   setCustomWallpaper: (dataUrl: string) => void
-  /** Clear the custom wallpaper and return to the built-in image. */
+  /** Clear the custom wallpaper. */
   clearCustomWallpaper: () => void
+  /** Persist the wallpaper opacity (0-100). */
+  setWallpaperOpacity: (opacity: number) => void
   /** Bare observable of the custom wallpaper data URL. */
   hooks: {
     customWallpaper: {
       getSnapshot(): string
+      subscribe(fn: () => void): () => void
+    }
+    wallpaperOpacity: {
+      getSnapshot(): number
       subscribe(fn: () => void): () => void
     }
     enabled: {
@@ -33,16 +39,16 @@ export type WallpaperUploadRowProps =
   PropsRuntime<'settings.frieren.item'> & PropsLocale<'settings.frieren'> & InjectFace<WallpaperUploadRowInjected>
 
 /** Longest edge kept when downscaling an upload (keeps the stored value small). */
-const MAX_EDGE = 1600
+const MAX_EDGE = 1920
 
 /** JPEG quality for the downscaled upload. */
-const JPEG_QUALITY = 0.85
+const JPEG_QUALITY = 0.88
 
 /**
  * Load an image file and return a downscaled JPEG data URL. Non-JPEG sources
  * (including transparent PNGs) are flattened onto the JPEG canvas.
  * @param file - the picked image file.
- * @returns a `data:image/jpeg;base64,…` URL.
+ * @returns a `data:image/jpeg;base64,...` URL.
  */
 async function fileToDataUrl(file: File): Promise<string> {
   const objectUrl = URL.createObjectURL(file)
@@ -69,13 +75,14 @@ async function fileToDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Render the custom wallpaper row.
+ * Render the custom wallpaper row with upload, preview, remove, and opacity.
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, useCustomWallpaper, useEnabled }: WallpaperUploadRowProps) {
+export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, setWallpaperOpacity, useCustomWallpaper, useWallpaperOpacity, useEnabled }: WallpaperUploadRowProps) {
   const pluginEnabled = useEnabled(value => value)
   const custom = useCustomWallpaper(value => value) ?? ''
+  const opacity = useWallpaperOpacity(value => value) ?? 100
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -127,6 +134,28 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
         {custom !== '' && <img className={css.preview} src={custom} alt="" aria-hidden="true" />}
       </div>
       {failed && <div className={css.error}>{t('wallpaper.upload.error')}</div>}
+
+      {/* Opacity slider — only visible when a wallpaper is set */}
+      {custom !== '' && (
+        <div className={css.groupColumn} style={{ paddingLeft: 0, paddingRight: 0, paddingBottom: 0, borderBottom: 'none' }}>
+          <div className={css.copy}>
+            <div className={css.title}>{t('wallpaper.opacity.title')}</div>
+            <div className={css.description}>{t('wallpaper.opacity.description')}</div>
+          </div>
+          <div className={css.sliderRow}>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={opacity}
+              className={css.slider}
+              onChange={(e) => { setWallpaperOpacity(Number(e.target.value)) }}
+            />
+            <span className={css.sliderValue}>{opacity}%</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

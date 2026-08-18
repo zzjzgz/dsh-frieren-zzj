@@ -7,6 +7,7 @@ export type FrierenLocaleKey =
   | 'reset.title' | 'reset.description' | 'reset.button'
   | 'wallpaper.upload.title' | 'wallpaper.upload.description'
   | 'wallpaper.upload.button' | 'wallpaper.upload.clear' | 'wallpaper.upload.busy' | 'wallpaper.upload.error'
+  | 'wallpaper.opacity.title' | 'wallpaper.opacity.description'
   | 'scheme.title' | 'scheme.description' | 'scheme.light' | 'scheme.dark' | 'scheme.system'
   | 'material.title' | 'material.description' | 'material.glass' | 'material.plain'
   | 'decor.title' | 'decor.description'
@@ -29,11 +30,13 @@ export const en: Record<FrierenLocaleKey, string> = {
   'reset.description': 'Reset every Frieren theme setting to its default value and re-enable the plugin.',
   'reset.button': 'Restore defaults',
   'wallpaper.upload.title': 'Custom wallpaper',
-  'wallpaper.upload.description': 'Upload a local image as your wallpaper; clears back to the built-in scene.',
+  'wallpaper.upload.description': 'Upload a local image as your wallpaper background.',
   'wallpaper.upload.button': 'Upload local image',
-  'wallpaper.upload.clear': 'Restore built-in',
+  'wallpaper.upload.clear': 'Remove wallpaper',
   'wallpaper.upload.busy': 'Processing…',
   'wallpaper.upload.error': 'Could not read that image — try another file.',
+  'wallpaper.opacity.title': 'Wallpaper opacity',
+  'wallpaper.opacity.description': 'Adjust the transparency of the wallpaper background (0% = invisible, 100% = fully opaque).',
   'scheme.title': 'Appearance',
   'scheme.description': 'Pick light, dark, or follow the system. Stays in sync with the Appearance row.',
   'scheme.light': 'Light',
@@ -79,11 +82,13 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'reset.description': '把所有芙莉莲主题设置重置为默认值，并重新开启插件。',
   'reset.button': '恢复默认设置',
   'wallpaper.upload.title': '自定义壁纸',
-  'wallpaper.upload.description': '上传本地图片作为壁纸，可随时恢复内置背景。',
+  'wallpaper.upload.description': '上传本地图片作为整体背景壁纸。',
   'wallpaper.upload.button': '上传本地图片',
-  'wallpaper.upload.clear': '恢复内置',
+  'wallpaper.upload.clear': '移除壁纸',
   'wallpaper.upload.busy': '处理中…',
   'wallpaper.upload.error': '无法读取这张图片，请换一张试试。',
+  'wallpaper.opacity.title': '壁纸透明度',
+  'wallpaper.opacity.description': '调节壁纸背景的透明度（0% = 完全透明，100% = 完全不透明）。',
   'scheme.title': '外观模式',
   'scheme.description': '选择浅色、深色或跟随系统，与「外观」设置保持同步。',
   'scheme.light': '浅色',

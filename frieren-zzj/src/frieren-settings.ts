@@ -11,8 +11,8 @@ export const ENABLED_FIELD = 'enabled'
 /** User-uploaded custom wallpaper, stored as a downscaled JPEG data URL. */
 export const CUSTOM_WALLPAPER_FIELD = 'customWallpaper'
 
-/** Wallpaper opacity (0-100, where 100 = fully opaque, 0 = invisible). */
-export const WALLPAPER_OPACITY_FIELD = 'wallpaperOpacity'
+/** Wallpaper blur radius in pixels (0 = sharp, 20 = heavy blur). */
+export const WALLPAPER_BLUR_FIELD = 'wallpaperBlur'
 
 /** Input-bar material choice: frosted glass or the plain default surface. */
 export const INPUT_MATERIAL_FIELD = 'inputMaterial'
@@ -87,8 +87,8 @@ export interface FrierenSettings {
   enabled: boolean
   /** Custom wallpaper data URL ('' = no wallpaper). */
   customWallpaper: string
-  /** Wallpaper opacity percentage (0-100, 100 = fully opaque). */
-  wallpaperOpacity: number
+  /** Wallpaper blur radius in px (0-20, 0 = no blur). */
+  wallpaperBlur: number
   /** Input-bar material: frosted glass or plain. */
   inputMaterial: InputMaterial
   /** Decoration layer switches (see {@link DecorState}). */
@@ -109,7 +109,7 @@ export interface FrierenSettings {
 export const DEFAULT_FRIEREN_SETTINGS: ResolvedFrierenSettings = {
   [ENABLED_FIELD]: true,
   [CUSTOM_WALLPAPER_FIELD]: '',
-  [WALLPAPER_OPACITY_FIELD]: 100,
+  [WALLPAPER_BLUR_FIELD]: 0,
   [INPUT_MATERIAL_FIELD]: DEFAULT_INPUT_MATERIAL,
   [DECOR_SPARKLES_FIELD]: true,
   [DECOR_FLOWERS_FIELD]: true,
@@ -125,7 +125,7 @@ export const DEFAULT_FRIEREN_SETTINGS: ResolvedFrierenSettings = {
 export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
   [ENABLED_FIELD]: z.boolean().default(true),
   [CUSTOM_WALLPAPER_FIELD]: z.string().default(''),
-  [WALLPAPER_OPACITY_FIELD]: z.number().default(100),
+  [WALLPAPER_BLUR_FIELD]: z.number().default(0),
   [INPUT_MATERIAL_FIELD]: z.union([...INPUT_MATERIALS]).default(DEFAULT_INPUT_MATERIAL),
   [DECOR_SPARKLES_FIELD]: z.boolean().default(true),
   [DECOR_FLOWERS_FIELD]: z.boolean().default(true),
@@ -194,7 +194,7 @@ export function resolveSettings(value: Partial<FrierenSettings> | undefined): Re
   return {
     enabled: value?.enabled ?? true,
     customWallpaper: value?.customWallpaper ?? '',
-    wallpaperOpacity: typeof value?.wallpaperOpacity === 'number' ? value.wallpaperOpacity : 100,
+    wallpaperBlur: typeof value?.wallpaperBlur === 'number' ? value.wallpaperBlur : 0,
     inputMaterial: isInputMaterial(value?.inputMaterial) ? value.inputMaterial : DEFAULT_INPUT_MATERIAL,
     decorSparkles: value?.decorSparkles ?? true,
     decorFlowers: value?.decorFlowers ?? true,

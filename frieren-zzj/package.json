@@ -1,7 +1,7 @@
 {
   "name": "@zengzhaojun/dsh-client-frieren-zzj",
-  "description": "dsh-芙莉莲-zzj — Frieren × Himmel web theme: alias-token overrides, global stylesheet (fantasy serif headings, gold-lilac scrollbar, sparkles, blue-moon-weed flowers, magic circles), decorative slot entries, and a Frieren theme settings section (custom wallpaper upload with opacity control, appearance, overall material (glass / plain), per-layer decorations, quote rotation)",
-  "version": "0.1.0-rc.33",
+  "description": "dsh-芙莉莲-zzj — Frieren × Himmel web theme: alias-token overrides, global stylesheet (fantasy serif headings, gold-lilac scrollbar, sparkles, blue-moon-weed flowers, magic circles), decorative slot entries, and a Frieren theme settings section (custom wallpaper upload with blur control, appearance, overall material (glass / plain), per-layer decorations, quote rotation)",
+  "version": "0.1.0-rc.34",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"

@@ -2,7 +2,7 @@
  * Custom wallpaper row in the Frieren theme section: upload a local image as
  * the wallpaper (stored as a downscaled JPEG data URL in the durable
  * `frieren-zzj` settings section), with a preview thumbnail, a remove action,
- * and an opacity slider.
+ * and a blur slider with preset buttons.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -15,15 +15,15 @@ export interface WallpaperUploadRowInjected {
   setCustomWallpaper: (dataUrl: string) => void
   /** Clear the custom wallpaper. */
   clearCustomWallpaper: () => void
-  /** Persist the wallpaper opacity (0-100). */
-  setWallpaperOpacity: (opacity: number) => void
+  /** Persist the wallpaper blur radius in px (0-20). */
+  setWallpaperBlur: (blur: number) => void
   /** Bare observable of the custom wallpaper data URL. */
   hooks: {
     customWallpaper: {
       getSnapshot(): string
       subscribe(fn: () => void): () => void
     }
-    wallpaperOpacity: {
+    wallpaperBlur: {
       getSnapshot(): number
       subscribe(fn: () => void): () => void
     }
@@ -43,6 +43,14 @@ const MAX_EDGE = 1920
 
 /** JPEG quality for the downscaled upload. */
 const JPEG_QUALITY = 0.88
+
+/** Blur preset values. */
+const BLUR_PRESETS: { value: number; labelKey: 'wallpaper.blur.none' | 'wallpaper.blur.light' | 'wallpaper.blur.medium' | 'wallpaper.blur.heavy' }[] = [
+  { value: 0, labelKey: 'wallpaper.blur.none' },
+  { value: 3, labelKey: 'wallpaper.blur.light' },
+  { value: 8, labelKey: 'wallpaper.blur.medium' },
+  { value: 15, labelKey: 'wallpaper.blur.heavy' },
+]
 
 /**
  * Load an image file and return a downscaled JPEG data URL. Non-JPEG sources
@@ -75,25 +83,39 @@ async function fileToDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Render the custom wallpaper row with upload, preview, remove, and opacity.
+ * Apply the blur filter directly to the wallpaper DOM layer for instant
+ * visual feedback (no round-trip through settings → HTTP → re-render).
+ * @param blurPx - the blur radius in pixels.
+ */
+function pokeLayerBlur(blurPx: number): void {
+  const layer = document.querySelector('[data-frieren-wallpaper-layer]')
+  if (layer instanceof HTMLElement) {
+    const clamped = Math.max(0, Math.min(20, blurPx))
+    layer.style.filter = clamped > 0 ? `blur(${clamped}px)` : 'none'
+  }
+}
+
+/**
+ * Render the custom wallpaper row with upload, preview, remove, and blur
+ * slider with preset buttons.
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, setWallpaperOpacity, useCustomWallpaper, useWallpaperOpacity, useEnabled }: WallpaperUploadRowProps) {
+export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, setWallpaperBlur, useCustomWallpaper, useWallpaperBlur, useEnabled }: WallpaperUploadRowProps) {
   const pluginEnabled = useEnabled(value => value)
   const custom = useCustomWallpaper(value => value) ?? ''
-  const persistedOpacity = useWallpaperOpacity(value => value) ?? 100
+  const persistedBlur = useWallpaperBlur(value => value) ?? 0
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   // Local state for the slider: tracks the drag in real time so the UI is
   // responsive. The persisted value syncs back when settings load/confirm.
-  const [dragOpacity, setDragOpacity] = useState(persistedOpacity)
+  const [dragBlur, setDragBlur] = useState(persistedBlur)
   const inputRef = useRef<HTMLInputElement>(null)
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sync local state when the persisted value changes externally (e.g. after
-  // a confirmed write or a reset-to-defaults).
-  useEffect(() => { setDragOpacity(persistedOpacity) }, [persistedOpacity])
+  // a confirmed write, a preset click, or a reset-to-defaults).
+  useEffect(() => { setDragBlur(persistedBlur) }, [persistedBlur])
 
   // Clean up the debounce timer on unmount.
   useEffect(() => {
@@ -113,6 +135,15 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Commit a blur value: update local state, poke the DOM layer, debounce the persisted write. */
+  const commitBlur = (v: number, immediate = false): void => {
+    const clamped = Math.max(0, Math.min(20, v))
+    setDragBlur(clamped)
+    pokeLayerBlur(clamped)
+    if (persistTimer.current !== null) clearTimeout(persistTimer.current)
+    persistTimer.current = setTimeout(() => { setWallpaperBlur(clamped) }, immediate ? 0 : 400)
   }
 
   return (
@@ -149,49 +180,50 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
       </div>
       {failed && <div className={css.error}>{t('wallpaper.upload.error')}</div>}
 
-      {/* Opacity slider — only visible when a wallpaper is set.
+      {/* Blur slider + preset buttons — only visible when a wallpaper is set.
            The slider uses local state for instant visual feedback; the DOM
-           wallpaper layer's opacity is updated directly on input, while the
+           wallpaper layer's filter is updated directly on input, while the
            persisted write is debounced so dragging doesn't flood the settings
-           bridge with HTTP requests (the root cause of the laggy slider). */}
+           bridge with HTTP requests. Preset buttons commit immediately. */}
       {custom !== '' && (
         <div className={css.groupColumn} style={{ paddingLeft: 0, paddingRight: 0, paddingBottom: 0, borderBottom: 'none' }}>
           <div className={css.copy}>
-            <div className={css.title}>{t('wallpaper.opacity.title')}</div>
-            <div className={css.description}>{t('wallpaper.opacity.description')}</div>
+            <div className={css.title}>{t('wallpaper.blur.title')}</div>
+            <div className={css.description}>{t('wallpaper.blur.description')}</div>
           </div>
           <div className={css.sliderRow}>
             <input
               type="range"
               min="0"
-              max="100"
-              step="1"
-              value={dragOpacity}
+              max="20"
+              step="0.5"
+              value={dragBlur}
               className={css.slider}
               onInput={(e) => {
-                const v = Number(e.target.value)
-                // 1. Instant local state (updates the % label).
-                setDragOpacity(v)
-                // 2. Directly poke the wallpaper layer's opacity (instant visual
-                //    feedback — no round-trip through settings → HTTP → re-render).
-                const layer = document.querySelector('[data-frieren-wallpaper-layer]')
-                if (layer instanceof HTMLElement) {
-                  layer.style.opacity = String(Math.max(0, Math.min(100, v)) / 100)
-                }
-                // 3. Debounce the persisted write so rapid drags don't spam
-                //    the settings bridge with PUT requests.
-                if (persistTimer.current !== null) clearTimeout(persistTimer.current)
-                persistTimer.current = setTimeout(() => { setWallpaperOpacity(v) }, 400)
+                const v = Number((e.target as HTMLInputElement).value)
+                commitBlur(v)
               }}
               onChange={(e) => {
                 // Final commit on release (fires after the last onInput).
-                const v = Number(e.target.value)
-                setDragOpacity(v)
-                if (persistTimer.current !== null) clearTimeout(persistTimer.current)
-                setWallpaperOpacity(v)
+                const v = Number((e.target as HTMLInputElement).value)
+                commitBlur(v, true)
               }}
             />
-            <span className={css.sliderValue}>{dragOpacity}%</span>
+            <span className={css.sliderValue}>{dragBlur.toFixed(1)}px</span>
+          </div>
+          {/* Preset buttons */}
+          <div className={css.presetRow}>
+            {BLUR_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                className={css.presetBtn}
+                aria-pressed={Math.abs(dragBlur - preset.value) < 0.01}
+                onClick={() => { commitBlur(preset.value, true) }}
+              >
+                {t(preset.labelKey)}
+              </button>
+            ))}
           </div>
         </div>
       )}

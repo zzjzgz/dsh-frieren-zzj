@@ -7,7 +7,8 @@ export type FrierenLocaleKey =
   | 'reset.title' | 'reset.description' | 'reset.button'
   | 'wallpaper.upload.title' | 'wallpaper.upload.description'
   | 'wallpaper.upload.button' | 'wallpaper.upload.clear' | 'wallpaper.upload.busy' | 'wallpaper.upload.error'
-  | 'wallpaper.opacity.title' | 'wallpaper.opacity.description'
+  | 'wallpaper.blur.title' | 'wallpaper.blur.description'
+  | 'wallpaper.blur.none' | 'wallpaper.blur.light' | 'wallpaper.blur.medium' | 'wallpaper.blur.heavy'
   | 'scheme.title' | 'scheme.description' | 'scheme.light' | 'scheme.dark' | 'scheme.system'
   | 'material.title' | 'material.description' | 'material.glass' | 'material.plain'
   | 'decor.title' | 'decor.description'
@@ -35,8 +36,12 @@ export const en: Record<FrierenLocaleKey, string> = {
   'wallpaper.upload.clear': 'Remove wallpaper',
   'wallpaper.upload.busy': 'Processing…',
   'wallpaper.upload.error': 'Could not read that image — try another file.',
-  'wallpaper.opacity.title': 'Wallpaper opacity',
-  'wallpaper.opacity.description': 'Adjust the transparency of the wallpaper background (0% = invisible, 100% = fully opaque).',
+  'wallpaper.blur.title': 'Wallpaper blur',
+  'wallpaper.blur.description': 'Adjust the blur radius of the wallpaper background (0px = sharp, 20px = heavily blurred). Changes animate smoothly.',
+  'wallpaper.blur.none': 'None',
+  'wallpaper.blur.light': 'Light',
+  'wallpaper.blur.medium': 'Medium',
+  'wallpaper.blur.heavy': 'Heavy',
   'scheme.title': 'Appearance',
   'scheme.description': 'Pick light, dark, or follow the system. Stays in sync with the Appearance row.',
   'scheme.light': 'Light',
@@ -87,8 +92,12 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'wallpaper.upload.clear': '移除壁纸',
   'wallpaper.upload.busy': '处理中…',
   'wallpaper.upload.error': '无法读取这张图片，请换一张试试。',
-  'wallpaper.opacity.title': '壁纸透明度',
-  'wallpaper.opacity.description': '调节壁纸背景的透明度（0% = 完全透明，100% = 完全不透明）。',
+  'wallpaper.blur.title': '壁纸模糊度',
+  'wallpaper.blur.description': '调节壁纸背景的模糊程度（0px = 清晰，20px = 重度模糊），变化时平滑过渡。',
+  'wallpaper.blur.none': '无模糊',
+  'wallpaper.blur.light': '轻度',
+  'wallpaper.blur.medium': '中度',
+  'wallpaper.blur.heavy': '重度',
   'scheme.title': '外观模式',
   'scheme.description': '选择浅色、深色或跟随系统，与「外观」设置保持同步。',
   'scheme.light': '浅色',

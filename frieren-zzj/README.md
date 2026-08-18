@@ -7,7 +7,7 @@ stylesheet (fantasy serif headings, gold-lilac scrollbar, sparkles,
 blue-moon-weed flowers, magic circles), and
 registers the frame stage, the hero seal, the header badge, and the rotating
 Himmel dock quote into their slots. Initial state has NO wallpaper; users can
-upload their own image as the full-page background and adjust its opacity.
+upload their own image as the full-page background and adjust its blur.
 
 ## Configuration
 
@@ -24,11 +24,14 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
 - custom wallpaper upload stored as a downscaled JPEG data URL in the
   settings document (uploading again replaces the image; "remove wallpaper"
   clears it). Initial state is NO wallpaper; after upload, the image renders
-  as an independent fixed layer (`position:fixed; z-index:-2`) that does not
+  as an independent fixed layer (`position:fixed; z-index:-2`) with
+  `transform:scale(1.1)` and `transition:filter 0.3s ease`, that does not
   interfere with the body's own CSS,
-- **wallpaper opacity** (0%–100%): a slider that adjusts the CSS `opacity` of
-  the wallpaper layer in real time (0% = invisible, 100% = fully opaque);
-  only shown when a wallpaper is set,
+  - **wallpaper blur** (0px–20px): a slider that adjusts the CSS `filter: blur()`
+  of the wallpaper layer in real time, plus four preset buttons (none / light /
+  medium / heavy); changes animate smoothly via `transition: filter 0.3s ease`.
+  `transform: scale(1.1)` prevents blurred edges from showing. Only shown when a
+  wallpaper is set,
 - overall material (glass / plain): `glass` applies a FIXED frosted look to
   the input card (`[data-composer-card]`), the task-list dock card
   (`[data-testid='todo-panel']`), the goal dock card
@@ -49,7 +52,7 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
 - quote rotation mode (daily / random / fixed) over an 8-line quote library,
 - **restore defaults** button (at the bottom): replaces the whole section with
   the default values (no wallpaper, glass material, all decorations on, random
-  quote mode, opacity reset to 100%, clears custom wallpaper and stale fields
+  quote mode, blur reset to 0px, clears custom wallpaper and stale fields
   from older plugin versions) and re-enables the plugin.
 
 All rows read through a revision-cached observable; every field falls back to

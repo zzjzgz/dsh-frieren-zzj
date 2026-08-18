@@ -29,7 +29,7 @@ import { FRI_BASE_CSS } from './fri-base.css.ts'
 import { FRI_DECOR_CSS } from './fri-theme.css.ts'
 import { GLASS_CSS } from './glass.ts'
 import {
-  CUSTOM_WALLPAPER_FIELD, WALLPAPER_OPACITY_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
+  CUSTOM_WALLPAPER_FIELD, WALLPAPER_BLUR_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
   DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, DEFAULT_FRIEREN_SETTINGS, ENABLED_FIELD,
   INPUT_MATERIAL_FIELD, QUOTE_MODE_FIELD, CUSTOM_QUOTE_FIELD, CUSTOM_RANDOM_QUOTES_FIELD,
   resolveSettings, parseCustomQuotes,
@@ -310,8 +310,8 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => scope.subscribe(fn),
   }
 
-  const wallpaperOpacitySource: BareObservable<number> = {
-    getSnapshot: () => settingsOf().wallpaperOpacity,
+  const wallpaperBlurSource: BareObservable<number> = {
+    getSnapshot: () => settingsOf().wallpaperBlur,
     subscribe: (fn) => scope.subscribe(fn),
   }
 
@@ -385,7 +385,9 @@ export function apply(ctx: ClientContext): void {
   // a z-index:-1 layer. To make the wallpaper visible, we set a body attribute
   // `data-frieren-wallpaper` and inject CSS that overrides --dsw-alias-bg-base
   // (and the sidebar fill) to transparent while a wallpaper is active. The
-  // opacity slider controls the layer's CSS `opacity` property directly.
+  // blur slider controls the layer's CSS `filter: blur()` property directly;
+  // `transform: scale(1.1)` prevents blurred edges from showing, and
+  // `transition: filter 0.3s ease` provides the smooth animation.
   // Initial state is NO wallpaper (the div is absent).
   ctx.effect(() => {
     // Inject the transparency CSS once (idempotent).
@@ -411,18 +413,19 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     const sync = (): void => {
       const s = settingsOf()
       const custom = s.customWallpaper
-      const opacity = s.wallpaperOpacity
+      const blur = s.wallpaperBlur
       if (s.enabled && custom !== '') {
         if (layer === null) {
           layer = document.createElement('div')
           layer.dataset.frierenWallpaperLayer = ''
-          layer.style.cssText = 'position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;'
+          layer.style.cssText = 'position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;transform:scale(1.1);transition:filter 0.3s ease;'
           document.body.appendChild(layer)
         }
-        // Always update: re-uploads change the URL and the opacity slider
-        // changes the opacity value continuously.
+        // Always update: re-uploads change the URL and the blur slider
+        // changes the filter value continuously.
         layer.style.backgroundImage = `url("${custom}")`
-        layer.style.opacity = String(Math.max(0, Math.min(100, opacity)) / 100)
+        const clamped = Math.max(0, Math.min(20, blur))
+        layer.style.filter = clamped > 0 ? `blur(${clamped}px)` : 'none'
         // Mark the body so the transparency CSS kicks in.
         document.body.setAttribute('data-frieren-wallpaper', 'on')
       } else {
@@ -544,8 +547,8 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     inject: (): WallpaperUploadRowInjected => ({
       setCustomWallpaper: (dataUrl: string) => { void scope.set(CUSTOM_WALLPAPER_FIELD, dataUrl) },
       clearCustomWallpaper: () => { void scope.set(CUSTOM_WALLPAPER_FIELD, '') },
-      setWallpaperOpacity: (opacity: number) => { void scope.set(WALLPAPER_OPACITY_FIELD, opacity) },
-      hooks: { customWallpaper: customWallpaperSource, wallpaperOpacity: wallpaperOpacitySource, enabled: enabledSource },
+      setWallpaperBlur: (blur: number) => { void scope.set(WALLPAPER_BLUR_FIELD, blur) },
+      hooks: { customWallpaper: customWallpaperSource, wallpaperBlur: wallpaperBlurSource, enabled: enabledSource },
     }),
   }, WallpaperUploadRow))
 

@@ -1,7 +1,7 @@
 {
   "name": "@zengzhaojun/dsh-client-frieren-zzj",
   "description": "dsh-芙莉莲-zzj — Frieren × Himmel web theme: alias-token overrides, global stylesheet (watercolor background scene, fantasy serif headings, gold-lilac scrollbar, sparkles, blue-moon-weed flowers, magic circles), decorative slot entries, and a Frieren theme settings section (wallpaper switch, appearance, custom wallpaper upload, input-bar material (glass / plain), per-layer decorations, quote rotation)",
-  "version": "0.1.0-rc.26",
+  "version": "0.1.0-rc.27",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"

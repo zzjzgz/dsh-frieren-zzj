@@ -97,7 +97,7 @@ interface BareObservable<T> {
 function BlueFlower(props: { size: number; className?: string; style?: React.CSSProperties }): React.ReactElement {
   const petals = [0, 72, 144, 216, 288].map((angle) =>
     React.createElement('g', { key: angle, transform: `rotate(${angle} 12 12)` },
-      React.createElement('ellipse', { cx: 12, cy: 6.8, rx: 3.1, ry: 4.5 }),
+      React.createElement('ellipse', { cx: 12, cy: 5.5, rx: 3.5, ry: 5.2, fill: 'rgba(143, 168, 224, 0.35)', stroke: '#7b9dd6', strokeWidth: 1.2 }),
     ),
   )
   return React.createElement('svg', {
@@ -108,8 +108,11 @@ function BlueFlower(props: { size: number; className?: string; style?: React.CSS
     style: props.style,
     'aria-hidden': true,
   },
-    React.createElement('g', { fill: 'none', stroke: '#8fa8e0', strokeWidth: 1.5, opacity: 0.9 }, petals),
-    React.createElement('circle', { cx: 12, cy: 12, r: 2.1, fill: '#e8c96a' }),
+    // Soft glow halo behind the flower
+    React.createElement('circle', { cx: 12, cy: 12, r: 10, fill: 'rgba(143, 168, 224, 0.08)' }),
+    React.createElement('g', { opacity: 0.92 }, petals),
+    React.createElement('circle', { cx: 12, cy: 12, r: 1.8, fill: '#e8c96a' }),
+    React.createElement('circle', { cx: 12, cy: 12, r: 0.8, fill: '#f5dc8a' }),
   )
 }
 
@@ -378,6 +381,8 @@ export function apply(ctx: ClientContext): void {
       const custom = s.customWallpaper
       const active = s.enabled && custom !== ''
       if (active) {
+        // Always rewrite textContent: re-uploads change the URL but the tag
+        // is already connected, so we must update in-place.
         tag.textContent = `body { background-image: url("${custom}") !important; }
 @media (prefers-color-scheme: dark) {
   body { background-image: linear-gradient(rgba(15,16,32,0.36), rgba(15,16,32,0.36)), url("${custom}") !important; }

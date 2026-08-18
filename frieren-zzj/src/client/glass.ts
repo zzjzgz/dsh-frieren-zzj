@@ -1,5 +1,6 @@
 /**
- * Input-card glass material — iOS-style frosted-glass stylesheet.
+ * iOS-style frosted-glass material stylesheet — applied to input cards AND
+ * the settings panel.
  *
  * Follows the iOS glassmorphism design language (see Apple's Human Interface
  * Guidelines and typical glassmorphism references): a semi-transparent white
@@ -9,7 +10,7 @@
  * even lower-alpha dark base with a subtler white border); the material is
  * fixed — users only choose glass vs plain, nothing is adjustable.
  *
- * Targets (stable data attributes):
+ * Targets (stable selectors):
  * - `[data-composer-card]` — the input card (ui-conversation InputBar);
  * - `[data-testid='todo-panel']` — the task-list dock card (ui-conversation
  *   TodoPanel; the root element IS the card);
@@ -17,6 +18,9 @@
  *   `data-goal-bar` sits on the full-width positioning dock, whose only
  *   child is the 36px card, so the glass lands on the card, not the dock
  *   strip).
+ * - `[role="dialog"][aria-modal="true"]` — the settings modal panel
+ *   (ui-settings-general SettingsRoot: the centered 800px panel that
+ *   contains every settings section).
  *
  * Message-area cards (bubbles, tool cards) are deliberately NOT glassed —
  * they keep their default surfaces, and the message area stays transparent,
@@ -33,14 +37,14 @@
  * light/dark/system preference — not the OS media query.
  */
 
-/** Glass targets: the input card plus the task-list and goal dock CARDS
- * (the goal selector reaches the card through the dock's only child).
- * Message-area cards keep their default surfaces so the wallpaper stays
- * visible. */
+/** Glass targets: the input card, task-list and goal dock CARDS, plus the
+ * settings modal panel. Message-area cards keep their default surfaces so
+ * the wallpaper stays visible. */
 const GLASS_CARDS: readonly string[] = [
   '[data-composer-card]',
   "[data-testid='todo-panel']",
   '[data-goal-bar] > :first-child',
+  '[role="dialog"][aria-modal="true"]',
 ]
 
 /** The fixed iOS-style glass-material stylesheet; injected while inputMaterial = 'glass'. */

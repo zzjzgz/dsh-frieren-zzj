@@ -38,11 +38,12 @@ export type QuoteMode = typeof QUOTE_MODES[number]
 export const DEFAULT_QUOTE_MODE: QuoteMode = 'random'
 
 /**
- * Input-bar materials: `glass` applies the iOS-style frosted-glass treatment
+ * Overall materials: `glass` applies the iOS-style frosted-glass treatment
+ * to the input card, task list, goal bar, and settings panel
  * (semi-transparent background, moderate backdrop blur with saturation boost,
  * translucent white border, soft directional shadow, generous rounding —
  * light/dark variants baked in, not user-adjustable); `plain` restores the
- * default input-card surface.
+ * default surfaces.
  */
 export const INPUT_MATERIALS = ['glass', 'plain'] as const
 export type InputMaterial = typeof INPUT_MATERIALS[number]

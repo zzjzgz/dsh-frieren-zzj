@@ -348,54 +348,41 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => ctx.on('theme/change', fn),
   }
 
-  // Wallpaper stylesheet: present exactly while the plugin is on.
+  // Wallpaper stylesheet: present exactly while the plugin is on. When a
+  // custom wallpaper data URL is set, it replaces the built-in background
+  // image — using the `background:` shorthand so every sub-property is
+  // overridden (a bare `background-image` rule can lose the cascade war
+  // against the built-in `background:` shorthand when both are `!important`
+  // and tag order is unstable). Keeping both rules in one tag eliminates the
+  // ordering hazard entirely.
   ctx.effect(() => {
     const tag = document.createElement('style')
     tag.dataset.pluginCss = 'frieren-zzj-wallpaper'
     const sync = (): void => {
-      if (settingsOf().enabled) {
-        if (!tag.isConnected) {
-          tag.textContent = FRI_WALLPAPER_CSS
-          document.head.appendChild(tag)
-        }
-      } else if (tag.isConnected) {
-        tag.remove()
+      const s = settingsOf()
+      if (!s.enabled) {
+        if (tag.isConnected) tag.remove()
+        return
       }
+      const custom = s.customWallpaper
+      // When a custom wallpaper is set, override the built-in body background
+      // with the user's image (using the shorthand so position/size/reset are
+      // all controlled). Otherwise, inject the built-in wallpaper CSS (which
+      // defines `--fri-bg` and the body background rule).
+      if (custom !== '') {
+        tag.textContent = `body { background: url("${custom}") center / cover no-repeat fixed !important; }
+@media (prefers-color-scheme: dark) {
+  body { background: linear-gradient(rgba(15,16,32,0.36), rgba(15,16,32,0.36)), url("${custom}") center / cover no-repeat fixed !important; }
+}`
+      } else {
+        tag.textContent = FRI_WALLPAPER_CSS
+      }
+      if (!tag.isConnected) document.head.appendChild(tag)
     }
     sync()
     const unsubscribe = scope.subscribe(sync)
     return () => { unsubscribe(); tag.remove() }
   }, 'frieren-zzj: wallpaper stylesheet')
-
-  // Custom wallpaper override: replaces the body background image layer while
-  // a user upload is set (and the plugin is on), keeping the dark-mode
-  // dimming gradient. The data URL is a JPEG base64 string — no escaping
-  // risk. Re-uploads must rewrite the text even while the tag is already
-  // mounted: the style only ever holds ONE background URL, so an
-  // already-connected tag is stale the moment a new image lands.
-  ctx.effect(() => {
-    const tag = document.createElement('style')
-    tag.dataset.pluginCss = 'frieren-zzj-custom-wallpaper'
-    const sync = (): void => {
-      const s = settingsOf()
-      const custom = s.customWallpaper
-      const active = s.enabled && custom !== ''
-      if (active) {
-        // Always rewrite textContent: re-uploads change the URL but the tag
-        // is already connected, so we must update in-place.
-        tag.textContent = `body { background-image: url("${custom}") !important; }
-@media (prefers-color-scheme: dark) {
-  body { background-image: linear-gradient(rgba(15,16,32,0.36), rgba(15,16,32,0.36)), url("${custom}") !important; }
-}`
-        if (!tag.isConnected) document.head.appendChild(tag)
-      } else if (tag.isConnected) {
-        tag.remove()
-      }
-    }
-    sync()
-    const unsubscribe = scope.subscribe(sync)
-    return () => { unsubscribe(); tag.remove() }
-  }, 'frieren-zzj: custom wallpaper stylesheet')
 
   // Input-card material stylesheet: present exactly while the plugin is on
   // and the material is 'glass' (iOS frosted look); 'plain' removes it and

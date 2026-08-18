@@ -24,7 +24,7 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
 - custom wallpaper upload stored as a downscaled JPEG data URL in the
   settings document (uploading again replaces the image; "remove wallpaper"
   clears it). Initial state is NO wallpaper; after upload, the image renders
-  as an independent fixed layer (`position:fixed; z-index:-1`) that does not
+  as an independent fixed layer (`position:fixed; z-index:-2`) that does not
   interfere with the body's own CSS,
 - **wallpaper opacity** (0%–100%): a slider that adjusts the CSS `opacity` of
   the wallpaper layer in real time (0% = invisible, 100% = fully opaque);

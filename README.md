@@ -4,7 +4,7 @@
 
 把整个 Web 界面变成充满芙莉莲元素的水彩世界：全站背景图、蓝紫水彩配色、魔法阵、苍月草飘花、星光、勇者金戒指印章与辛美尔的名台词，输入框支持玻璃/普通两种材质（消息区保持透明，壁纸完整可见）。所有开关都收在设置里的独立「芙莉莲主题」分区：壁纸总开关、外观模式、自定义壁纸上传、输入框材质、逐层装饰开关、名台词轮换方式。
 
-插件是**部署级客户端插件**：装进 web profile 后随 `dsh web` 自动加载，**重启不丢失、无需批准**。
+插件是**部署级 bundle 插件**：装进 web profile 后随 `dsh web` 自动加载，**重启不丢失、无需批准、无需手动注册**。
 
 
 
@@ -39,19 +39,17 @@
 dsh-frieren-zzj/
 ├── README.md                  # 本文档
 ├── frieren-zzj/               # 插件源码（npm 包 @zengzhaojun/dsh-client-frieren-zzj）
+│   ├── cordis.patch.yml       # bundle patch 层（声明 dsh.bundle 后自动激活）
+│   └── ...
 └── dist/
-    └── zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.22.tgz   # 打包产物（安装版用）
+    └── zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.24.tgz   # 打包产物（安装版用）
 ```
 
 ## 安装
 
 > 和ai说：根据 https://github.com/zzjzgz/dsh-frieren-zzj 的仓库指引在本地安装这个壁纸插件。
 
-> **原理**：本插件是**客户端插件**（包内声明 `dsh.client`，不是 `dsh.bundle`），所以安装分两步：
-> ① 把 `dist/` 里的 tgz 装进 **web profile** 的依赖（由 pnpm 管理）；
-> ② 在 web profile 的 `cordis.patch.yml` 里注册一行名录。
->
-> 两步都只发生在 profile 目录（默认 `%USERPROFILE%\.dsh\profiles\web`，即本机 `C:\Users\zzj\.dsh\profiles\web`），**完全不改动 dsh 源码仓库**；装好后随组合自动加载，重启不丢失、无需批准。
+> **原理**：从 `0.1.0-rc.24` 起，本插件同时声明 `dsh.bundle` 和 `dsh.client`，`dsh plugin add` 安装后会**自动**将其加入 `dsh.profile.bundles` 层列表并激活——**不再需要手动编辑 `cordis.patch.yml`**。一条命令装完，重启即生效。
 >
 > **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 命名空间有一份**硬编码白名单**（`agent-loop`、`shell`、`locale`、`permission`、`ui-conversation`、`ui-theme`、`web-search-deepseek` 等），第三方命名空间一律 `settings-not-exposed`，浏览器端写入会被静默丢弃（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边直接向 settings 服务注册命名空间，并额外注册一条同源 HTTP 路由（`/plugins/@zengzhaojun/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，设置仍持久化在用户设置文档（`~/.dsh/settings.yaml`），与内置插件一致。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
 
@@ -66,20 +64,20 @@ dsh-frieren-zzj/
 插件已发布到 npm（`@zengzhaojun/dsh-client-frieren-zzj`），直接按包名安装：
 
 ```powershell
-pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"
+pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24"
 ```
 
 - 本质是让 pnpm 从 npm registry 拉包，装进 profile 依赖（由 pnpm 管理）；
+- `dsh plugin` 会检测到包声明了 `dsh.bundle`，**自动**将其加入 `dsh.profile.bundles` 层列表——**无需手动编辑 `cordis.patch.yml`**；
 - 本机如果配的是腾讯镜像，新版本可能延迟几分钟才同步；遇到 404 就临时指定官方源：
-  `pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22" --registry=https://registry.npmjs.org`
-- 装完会打印一条 warning：`declares no dsh.bundle — installed as a plain dependency, not a profile layer` —— **这是正常的，不是报错**：它是客户端插件（`dsh.client`）而不是 bundle，名录行我们在第 3 步手动注册。
+  `pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24" --registry=https://registry.npmjs.org`
 
 ### 第 2 步（可选）：离线/本地 tgz 安装
 
 没有 npm 网络时，可用仓库 `dist/` 里的 tgz 安装：
 
 ```powershell
-pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.22.tgz"
+pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.24.tgz"
 ```
 
 > ⚠️ 路径注意：`dsh plugin add` 会把**相对**路径锚定到「你运行命令的目录」，而手动 `pnpm add` 的相对路径会相对 **profile 目录**解析——所以一律写 **`file:` + 正斜杠的绝对路径**最稳妥，不会装错地方。
@@ -93,34 +91,19 @@ Get-ChildItem "$env:USERPROFILE\.dsh\profiles\web\node_modules\@zengzhaojun\dsh-
 pnpm dsh plugin --profile web why @zengzhaojun/dsh-client-frieren-zzj
 ```
 
-> 小知识：pnpm 写进 `package.json` 的 spec 对本地 tgz 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象；从 npm 安装则是标准的 `"@zengzhaojun/dsh-client-frieren-zzj": "0.1.0-rc.22"`。
+> 小知识：pnpm 写进 `package.json` 的 spec 对本地 tgz 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象；从 npm 安装则是标准的 `"@zengzhaojun/dsh-client-frieren-zzj": "0.1.0-rc.24"`。
 
-### 第 3 步：在 profile 的 `cordis.patch.yml` 注册名录行
-
-打开 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`（没有就新建一个空文件），在顶层 YAML 数组里加入：
-
-```yaml
-# dsh-芙莉莲-zzj — Frieren × Himmel 主题（客户端插件）
-- insert:
-    - id: frieren-zzj
-      name: '@zengzhaojun/dsh-client-frieren-zzj'
-```
-
-- `id` 可自取，保证唯一即可；`name` 必须与包名**完全一致**（`@zengzhaojun/dsh-client-frieren-zzj`）；
-- `insert` 表示向组合里插入这一行；profile 的 patch 在 bundle 层**之后**应用，所以这行会出现在最终组合里；
-- 不要改同目录的 `cordis.yml`——那是自动生成的 profile 根文件，文件头注释也写了：*edit cordis.patch.yml, not this file*。
-
-### 第 4 步：验证组合配置
+### 第 3 步：验证组合配置
 
 ```powershell
 pnpm dsh web --dump-config
 ```
 
-- 输出整棵组合树，每一行带注释标明来源文件；应能看到 `frieren-zzj` 行，注释指向 profile 的 `cordis.patch.yml`；
+- 输出整棵组合树，每一行带注释标明来源；应能看到 `frieren-zzj` 行，注释指向插件的 `cordis.patch.yml` bundle 层；
 - `--dump-config` 只打印组合、**不启动服务**，随时可以运行；
-- 看不到这行？回到第 2/3 步检查：`node_modules` 里有没有包、YAML 缩进对不对、`name` 拼写对不对。
+- 看不到这行？回到第 1/2 步检查：`node_modules` 里有没有包、版本号对不对。
 
-### 第 5 步：重启 `dsh web` 并刷新浏览器
+### 第 4 步：重启 `dsh web` 并刷新浏览器
 
 1. 在运行 `pnpm dsh web` 的终端按 `Ctrl+C` 停掉旧实例；
 2. 重新运行 `pnpm dsh web`；
@@ -128,15 +111,34 @@ pnpm dsh web --dump-config
 
 > 小技巧：想先试试不打断现有实例，可以另开一个终端跑 `pnpm dsh web --port 3081`，用 3081 端口预览；确认没问题再切回正式实例。
 
-### 第 6 步：确认效果
+### 第 5 步：确认效果
 
 应看到：全站水彩背景、右上角旋转魔法阵、苍月草飘花、金紫星光、顶部彩带、侧边栏金戒指印章、「蒼月草が咲く頃に」徽记、输入栏下方名台词。如果背景/配色变了但装饰没出现，多半是浏览器缓存，再硬刷新一次。
 
 打开设置（左下角齿轮）→ 导航里会出现「芙莉莲主题」分区，从上到下依次是：**插件总开关**、壁纸总开关、外观模式（浅色/深色/跟随系统）、自定义壁纸上传、输入框材质（玻璃 / 普通）、逐层装饰开关、名台词轮换方式，底部是**恢复默认设置**。改完立即生效，无需刷新。总开关关闭后分区里只保留开关与恢复按钮，方便随时开回来。
 
+## 从旧版本升级（≤ rc.23）
+
+如果之前安装过 `rc.23` 或更早版本，升级到 `rc.24` 后可以**删除** profile `cordis.patch.yml` 里手动注册的名录行（不再需要了）：
+
+1. 升级安装：
+   ```powershell
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24"
+   ```
+2. 打开 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`，删除之前手动加的块：
+   ```yaml
+   # 删掉这段（rc.24 起不再需要）
+   - insert:
+       - id: frieren-zzj
+         name: '@zengzhaojun/dsh-client-frieren-zzj'
+   ```
+3. 重启 `dsh web`——`rc.24` 的 bundle 层会自动注册插件行。
+
+> 不删也行：profile 的 `cordis.patch.yml` 层在 bundle 层之后应用，多写一行 `insert` 只会多一条同 id 的行（Loader 去重后等效），但建议清理以保持干净。
+
 ## 更新插件（发布新版本）
 
-1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.22` → `0.1.0-rc.23`）。**必须升**：npm 不允许重复发布同一版本，pnpm 也按 lockfile 校验；
+1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.24` → `0.1.0-rc.25`）。**必须升**：npm 不允许重复发布同一版本，pnpm 也按 lockfile 校验；
 2. 重新构建 + 发布（见「从源码打包」和「发布到 npm」）：
 
    ```powershell
@@ -147,7 +149,7 @@ pnpm dsh web --dump-config
 3. 任何机器上按新版本号重装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24"
    ```
 
 4. 重启 `dsh web` + 浏览器硬刷新（设置桥依赖 node 半边，**必须完整重启**）。
@@ -164,7 +166,7 @@ pnpm dsh web --dump-config
    node node_modules/typescript/bin/tsc -p tsconfig.build.json
    node node_modules/tsdown/dist/run.mjs -c tsdown.config.build.ts
    cd frieren-zzj
-   pnpm pack --pack-destination ..\dist
+   npm pack --pack-destination ..\dist
    ```
 
 3. 新的 tgz 出现在 `dist/` 后，可本地安装（见「安装」第 2 步），或继续发布到 npm（见「发布到 npm」）。
@@ -190,28 +192,27 @@ pnpm dsh web --dump-config
 
    > **2FA 提示**：账号开启双重认证时，`npm publish` 会提示输入验证码（或加 `--otp=6位码`）。想免验证码发布（适合脚本/CI），在 <https://www.npmjs.com/settings/zengzhaojun/tokens> 生成 **Granular Access Token**：All packages + Read and write + 勾选 **Bypass 2FA for publish**，然后 `npm config set //registry.npmjs.org/:_authToken=令牌`。令牌等于发布权限，别提交进仓库、别分享。
 
-   > **版本标签（dist-tag）**：`--tag rc` 发布**不会**更新 `latest` 标签，所以不带版本号的安装命令装到的是 `latest`（可能落后于 rc）。建议安装时**显式写版本**（`@0.1.0-rc.22`）；想统一 latest 可补一条：`npm dist-tag add @zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22 latest`。
+   > **版本标签（dist-tag）**：`--tag rc` 发布**不会**更新 `latest` 标签，所以不带版本号的安装命令装到的是 `latest`（可能落后于 rc）。建议安装时**显式写版本**（`@0.1.0-rc.24`）；想统一 latest 可补一条：`npm dist-tag add @zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24 latest`。
 
 3. **任何机器上一条命令安装**（本机腾讯镜像会同步 npmjs，新包一般几分钟内可见）：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24"
    ```
 
    如果镜像还没同步到（404），可先临时指定官方源安装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22" --registry=https://registry.npmjs.org
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24" --registry=https://registry.npmjs.org
    ```
 
-4. 记得 `cordis.patch.yml` 里的 `name` 用包名全称 `@zengzhaojun/dsh-client-frieren-zzj`（见安装第 3 步），然后重启 `dsh web`。
+4. 重启 `dsh web` 即可——`dsh.bundle` 声明会让插件自动作为 profile 层激活，无需手动编辑 `cordis.patch.yml`。
 
 > 包名规则：npm 上 scoped 包名 = 你拥有的 scope（用户名或组织）+ 包名。`@deepseek-ai/*` 是官方 scope，个人无法发布；本插件使用账号 `zengzhaojun` 的用户 scope（`@zengzhaojun/*`）。每次改源码发布前记得**升版本号**（npm 不允许重复发布同一版本）。
 
 ## 卸载
 
-1. 删除 `cordis.patch.yml` 里第 3 步加的 insert 块；
-2. 移除依赖：
+1. 移除依赖（`dsh plugin` 会自动从 `dsh.profile.bundles` 中移除该层）：
 
    ```powershell
    pnpm dsh plugin --profile web remove @zengzhaojun/dsh-client-frieren-zzj
@@ -220,6 +221,7 @@ pnpm dsh web --dump-config
    pnpm remove @zengzhaojun/dsh-client-frieren-zzj
    ```
 
+2. 如果之前手动在 `cordis.patch.yml` 里注册过名录行（≤ rc.23），也一并删掉；
 3. 重启 `dsh web`，主题消失。
 
 ## 常见问题
@@ -230,8 +232,8 @@ pnpm dsh web --dump-config
 **需要批准吗？**
 不需要。加载路径与 `ui-theme`、`ui-sidebar` 等内置插件相同。
 
-**安装时 pnpm 提示 `no dsh.bundle` 是报错吗？**
-不是。它是客户端插件（`dsh.client`），本来就不作为 bundle 层；名录行在 `cordis.patch.yml` 手动注册后即生效。
+**安装时会有 `no dsh.bundle` 警告吗？**
+从 `rc.24` 起不会了。插件现在声明了 `dsh.bundle`，`dsh plugin add` 会自动将其作为 profile 层激活。（`rc.23` 及更早版本会有该警告，是正常的——那时还是客户端插件，需要手动注册。）
 
 **主题没生效？**
 按顺序排查：① `pnpm dsh web --dump-config` 里有没有 `frieren-zzj` 行；② `node_modules\@zengzhaojun\dsh-client-frieren-zzj` 是否存在；③ 浏览器是否硬刷新（Ctrl+F5）；④ 是否完整重启过 `dsh web`。
@@ -240,7 +242,7 @@ pnpm dsh web --dump-config
 设置 →「芙莉莲主题」→ 顶部**总开关**关闭，所有主题效果立即消失、界面恢复默认；再开一次即全部回来。想连设置一起重置，点底部**恢复默认设置**。
 
 **朋友怎么用？**
-一条命令：`pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.22"`，再按「安装」第 3 步注册名录行、重启即可；背景图已内嵌，无需额外文件。离线环境则用 `dist/` 里的 tgz 走第 2 步。
+一条命令：`pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.24"`，重启 `dsh web` 即可；背景图已内嵌，无需额外文件。离线环境则用 `dist/` 里的 tgz 走第 2 步。
 
 **离线能用吗？**
 能。标题字体在线时从 Google Fonts 加载，离线自动回退本地衬线字体栈；背景与配色完全离线可用。
@@ -257,15 +259,3 @@ pnpm dsh web --dump-config
 - 插件代码：MIT License（见 `LICENSE`）
 - 背景图版权归原作者所有（本仓库默认不含背景图源文件，图片已内嵌进构建产物）
 - 《葬送的芙莉莲》（葬送のフリーレン）版权归 山田鐘人・アベツカサ 及动画制作方所有；本插件为粉丝自制装饰主题，与版权方无关
-
-
-
-
-
-
-
-
-
-
-
-

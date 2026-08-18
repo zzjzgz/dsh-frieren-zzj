@@ -1,0 +1,18 @@
+# dsh-芙莉莲-zzj bundle patch: the Frieren × Himmel theme layer.
+# Applied after dsh-base and dsh-web-app's layers, before the profile's own
+# cordis.patch.yml. This single insert row activates both halves of the
+# dual-face package:
+#
+#   • Host half (lib/index.js): registers the frieren-zzj settings namespace
+#     and the browser settings-bridge HTTP route.
+#   • Client half (lib/client.js): the modules node half scans this same row
+#     for the dsh.client declaration in package.json and composes the browser
+#     boot graph entry automatically.
+#
+# Because this bundle declares "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+# in package.json, `dsh plugin --profile web add` reconciles it into
+# dsh.profile.bundles automatically — no manual cordis.patch.yml edit needed.
+
+- insert:
+    - id: frieren-zzj
+      name: '@zengzhaojun/dsh-client-frieren-zzj'

@@ -1,29 +1,56 @@
 /**
- * Custom wallpaper row in the Frieren theme section: upload a local image as
- * the wallpaper (stored as a downscaled JPEG data URL in the durable
- * `frieren-zzj` settings section), with a preview thumbnail, a remove action,
- * and a blur slider with preset buttons.
+ * Wallpaper gallery row in the Frieren theme section: upload local images into
+ * a rotation gallery (each stored as a downscaled JPEG data URL in the durable
+ * `frieren-zzj` settings section), remove them one by one or all at once, and
+ * tune the blur and dim of whichever image is showing.
+ *
+ * The gallery supersedes the legacy single `customWallpaper` field: the first
+ * edit folds that image into the list and clears it, and the resolver keeps
+ * reading the legacy field until then, so an existing wallpaper survives the
+ * upgrade untouched.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import { MAX_WALLPAPERS, MAX_WALLPAPER_DIM } from '../frieren-settings.ts'
+import { wallpaperLayerBackground } from './wallpaper-css.ts'
+import { persistWallpaper, forgetWallpapers } from './persist-wallpaper.ts'
+import { addWallpaper } from './wallpaper-add.ts'
+import { wallpaperFilesToDelete } from '../wallpaper-names.ts'
+import { resolveWallpaperList } from './wallpaper-list.ts'
 import css from './fri-rows.module.css'
 
-/** Registrant-private business face: the custom-wallpaper write plus its observable. */
+/** Registrant-private business face: the gallery writes plus their observables. */
 export interface WallpaperUploadRowInjected {
-  /** Persist an uploaded image as the custom wallpaper (downscaled data URL). */
-  setCustomWallpaper: (dataUrl: string) => void
-  /** Clear the custom wallpaper. */
-  clearCustomWallpaper: () => void
+  /** Persist the whole gallery (replaces the list and clears the legacy field). */
+  setGallery: (list: readonly string[]) => void
+  /** Clear the gallery and the legacy single-wallpaper field. */
+  clearGallery: () => void
   /** Persist the wallpaper blur radius in px (0-20). */
   setWallpaperBlur: (blur: number) => void
-  /** Bare observable of the custom wallpaper data URL. */
+  /** Persist the wallpaper dim percentage (0-80). */
+  setWallpaperDim: (dim: number) => void
+  /**
+   * The gallery as it stands right now, read from the settings bridge rather
+   * than a render snapshot: the capacity check runs while an upload is in
+   * flight, where a stale length would let the gallery overflow.
+   */
+  readGallery: () => string[]
+  /** Bare observables of the gallery, the legacy image, and the master switch. */
   hooks: {
     customWallpaper: {
       getSnapshot(): string
       subscribe(fn: () => void): () => void
     }
+    customWallpapers: {
+      getSnapshot(): string
+      subscribe(fn: () => void): () => void
+    }
     wallpaperBlur: {
+      getSnapshot(): number
+      subscribe(fn: () => void): () => void
+    }
+    wallpaperDim: {
       getSnapshot(): number
       subscribe(fn: () => void): () => void
     }
@@ -50,6 +77,14 @@ const BLUR_PRESETS: { value: number; labelKey: 'wallpaper.blur.none' | 'wallpape
   { value: 3, labelKey: 'wallpaper.blur.light' },
   { value: 8, labelKey: 'wallpaper.blur.medium' },
   { value: 15, labelKey: 'wallpaper.blur.heavy' },
+]
+
+/** Dim preset values, as a percentage of black overlay. */
+const DIM_PRESETS: { value: number; labelKey: 'wallpaper.dim.none' | 'wallpaper.dim.light' | 'wallpaper.dim.medium' | 'wallpaper.dim.heavy' }[] = [
+  { value: 0, labelKey: 'wallpaper.dim.none' },
+  { value: 20, labelKey: 'wallpaper.dim.light' },
+  { value: 40, labelKey: 'wallpaper.dim.medium' },
+  { value: 60, labelKey: 'wallpaper.dim.heavy' },
 ]
 
 /**
@@ -96,30 +131,56 @@ function pokeLayerBlur(blurPx: number): void {
 }
 
 /**
- * Render the custom wallpaper row with upload, preview, remove, and blur
- * slider with preset buttons.
+ * Apply the dim overlay directly to the wallpaper layer for instant visual
+ * feedback. With a rotating gallery the layer's own inline style is the only
+ * place that knows which image is on screen, so the poke reads the URL back
+ * out of it instead of guessing the index.
+ * @param dim - the dim percentage.
+ */
+function pokeLayerDim(dim: number): void {
+  const layer = document.querySelector('[data-frieren-wallpaper-layer]')
+  if (!(layer instanceof HTMLElement)) return
+  const current = /url\((?:"|')?(.*?)(?:"|')?\)\s*$/.exec(layer.style.backgroundImage)?.[1]
+  if (current === undefined || current === '') return
+  layer.style.backgroundImage = wallpaperLayerBackground(current, dim)
+}
+
+/**
+ * Render the wallpaper gallery row with upload, thumbnails, per-image removal,
+ * clear-all, and the blur and dim sliders.
  * @param props - composed slot props.
  * @returns the row element tree.
  */
-export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper, setWallpaperBlur, useCustomWallpaper, useWallpaperBlur, useEnabled }: WallpaperUploadRowProps) {
+export function WallpaperUploadRow({ t, setGallery, clearGallery, setWallpaperBlur, setWallpaperDim, readGallery, useCustomWallpaper, useCustomWallpapers, useWallpaperBlur, useWallpaperDim, useEnabled }: WallpaperUploadRowProps) {
   const pluginEnabled = useEnabled(value => value)
-  const custom = useCustomWallpaper(value => value) ?? ''
+  const legacySingle = useCustomWallpaper(value => value) ?? ''
+  const galleryJson = useCustomWallpapers(value => value) ?? ''
   const persistedBlur = useWallpaperBlur(value => value) ?? 0
+  const persistedDim = useWallpaperDim(value => value) ?? 0
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
-  // Local state for the slider: tracks the drag in real time so the UI is
+  const [full, setFull] = useState(false)
+  // Local state for the sliders: tracks the drag in real time so the UI is
   // responsive. The persisted value syncs back when settings load/confirm.
   const [dragBlur, setDragBlur] = useState(persistedBlur)
+  const [dragDim, setDragDim] = useState(persistedDim)
   const inputRef = useRef<HTMLInputElement>(null)
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dimTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const list = resolveWallpaperList(legacySingle, galleryJson)
 
   // Sync local state when the persisted value changes externally (e.g. after
   // a confirmed write, a preset click, or a reset-to-defaults).
   useEffect(() => { setDragBlur(persistedBlur) }, [persistedBlur])
+  useEffect(() => { setDragDim(persistedDim) }, [persistedDim])
 
-  // Clean up the debounce timer on unmount.
+  // Clean up the debounce timers on unmount.
   useEffect(() => {
-    return () => { if (persistTimer.current !== null) clearTimeout(persistTimer.current) }
+    return () => {
+      if (persistTimer.current !== null) clearTimeout(persistTimer.current)
+      if (dimTimer.current !== null) clearTimeout(dimTimer.current)
+    }
   }, [])
 
   if (pluginEnabled === false) return null
@@ -128,13 +189,41 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
     if (file === undefined) return
     setBusy(true)
     setFailed(false)
+    setFull(false)
     try {
-      setCustomWallpaper(await fileToDataUrl(file))
-    } catch (_decodeFailure) {
-      setFailed(true)
+      // The flow and its ordering rules live in ./wallpaper-add.ts: capacity is
+      // checked BEFORE anything is uploaded, so a refused pick never leaves a
+      // file behind that no gallery entry references.
+      const outcome = await addWallpaper({
+        encode: () => fileToDataUrl(file),
+        store: (dataUrl) => persistWallpaper(dataUrl),
+        readGallery,
+        commit: (next) => { setGallery(next) },
+        forget: (names) => { void forgetWallpapers(names) },
+      })
+      if (outcome === 'full') setFull(true)
+      else if (outcome === 'failed') setFailed(true)
     } finally {
       setBusy(false)
     }
+  }
+
+  /**
+   * Remove one gallery entry, and delete the file behind it when the edit
+   * orphans that file. Entries are content-addressed, so a file another slot
+   * still references is kept — the diff answers that, not the entry itself.
+   * @param index - the entry to drop.
+   */
+  const removeAt = (index: number): void => {
+    const next = list.filter((_, i) => i !== index)
+    setGallery(next)
+    void forgetWallpapers(wallpaperFilesToDelete(list, next))
+  }
+
+  /** Clear the whole gallery, deleting every file it was holding. */
+  const clearAll = (): void => {
+    clearGallery()
+    void forgetWallpapers(wallpaperFilesToDelete(list, []))
   }
 
   /** Commit a blur value: update local state, poke the DOM layer, debounce the persisted write. */
@@ -144,6 +233,15 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
     pokeLayerBlur(clamped)
     if (persistTimer.current !== null) clearTimeout(persistTimer.current)
     persistTimer.current = setTimeout(() => { setWallpaperBlur(clamped) }, immediate ? 0 : 400)
+  }
+
+  /** Commit a dim value: update local state, poke the DOM layer, debounce the persisted write. */
+  const commitDim = (v: number, immediate = false): void => {
+    const clamped = Math.max(0, Math.min(MAX_WALLPAPER_DIM, v))
+    setDragDim(clamped)
+    pokeLayerDim(clamped)
+    if (dimTimer.current !== null) clearTimeout(dimTimer.current)
+    dimTimer.current = setTimeout(() => { setWallpaperDim(clamped) }, immediate ? 0 : 400)
   }
 
   return (
@@ -171,21 +269,42 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
         >
           {t(busy ? 'wallpaper.upload.busy' : 'wallpaper.upload.button')}
         </button>
-        {custom !== '' && (
-          <button type="button" className={css.clearBtn} onClick={() => { clearCustomWallpaper() }}>
+        {list.length > 0 && (
+          <button type="button" className={css.clearBtn} onClick={() => { clearAll() }}>
             {t('wallpaper.upload.clear')}
           </button>
         )}
-        {custom !== '' && <img className={css.preview} src={custom} alt="" aria-hidden="true" />}
+        {list.length > 0 && <span className={css.label}>{`${list.length}/${MAX_WALLPAPERS}`}</span>}
       </div>
       {failed && <div className={css.error}>{t('wallpaper.upload.error')}</div>}
+      {full && <div className={css.error}>{t('wallpaper.gallery.full')}</div>}
+
+      {/* Thumbnail strip: one entry per gallery image, each removable. The
+           gallery rotates on its own row once it holds two or more. */}
+      {list.length > 0 && (
+        <div className={css.galleryRow}>
+          {list.map((url, index) => (
+            <span key={index} className={css.galleryItem}>
+              <img className={css.preview} src={url} alt="" aria-hidden="true" />
+              <button
+                type="button"
+                className={css.galleryRemove}
+                aria-label={t('wallpaper.gallery.remove')}
+                onClick={() => { removeAt(index) }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Blur slider + preset buttons — only visible when a wallpaper is set.
            The slider uses local state for instant visual feedback; the DOM
            wallpaper layer's filter is updated directly on input, while the
            persisted write is debounced so dragging doesn't flood the settings
            bridge with HTTP requests. Preset buttons commit immediately. */}
-      {custom !== '' && (
+      {list.length > 0 && (
         <div className={css.groupColumn} style={{ paddingLeft: 0, paddingRight: 0, paddingBottom: 0, borderBottom: 'none' }}>
           <div className={css.copy}>
             <div className={css.title}>{t('wallpaper.blur.title')}</div>
@@ -220,6 +339,54 @@ export function WallpaperUploadRow({ t, setCustomWallpaper, clearCustomWallpaper
                 className={css.presetBtn}
                 aria-pressed={Math.abs(dragBlur - preset.value) < 0.01}
                 onClick={() => { commitBlur(preset.value, true) }}
+              >
+                {t(preset.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Dim slider + preset buttons — darkens the wallpaper so text stays
+           readable over busy images. Same instant-feedback strategy as blur:
+           the DOM layer is re-composited on input, the persisted write is
+           debounced, and presets commit immediately. */}
+      {list.length > 0 && (
+        <div className={css.groupColumn} style={{ paddingLeft: 0, paddingRight: 0, paddingBottom: 0, borderBottom: 'none' }}>
+          <div className={css.copy}>
+            <div className={css.title}>{t('wallpaper.dim.title')}</div>
+            <div className={css.description}>{t('wallpaper.dim.description')}</div>
+          </div>
+          <div className={css.sliderRow}>
+            <input
+              type="range"
+              min="0"
+              max={MAX_WALLPAPER_DIM}
+              step="1"
+              value={dragDim}
+              className={css.slider}
+              aria-label={t('wallpaper.dim.title')}
+              onInput={(e) => {
+                const v = Number((e.target as HTMLInputElement).value)
+                commitDim(v)
+              }}
+              onChange={(e) => {
+                // Final commit on release (fires after the last onInput).
+                const v = Number((e.target as HTMLInputElement).value)
+                commitDim(v, true)
+              }}
+            />
+            <span className={css.sliderValue}>{dragDim}%</span>
+          </div>
+          {/* Preset buttons */}
+          <div className={css.presetRow}>
+            {DIM_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                className={css.presetBtn}
+                aria-pressed={Math.abs(dragDim - preset.value) < 0.01}
+                onClick={() => { commitDim(preset.value, true) }}
               >
                 {t(preset.labelKey)}
               </button>

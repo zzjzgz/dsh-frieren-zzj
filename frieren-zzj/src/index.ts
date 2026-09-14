@@ -17,18 +17,32 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { readdir, stat, unlink } from 'node:fs/promises'
+import { join } from 'node:path'
 // Type-only: activates the webServer Context merge for the settings bridge route.
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { settingsNamespace, type SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace, SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { FRIEREN_SETTINGS_NAMESPACE, FrierenSettingsSchema } from './frieren-settings.ts'
+import { MAX_BRIDGE_BODY_BYTES, WALLPAPER_ROUTE_PREFIX } from './routes.ts'
+import { parseWallpaperRequest } from './wallpaper-names.ts'
+import {
+  decodeWallpaperUpload, loadWallpaper, pruneableWallpaper,
+  referencedWallpaperNames, removeWallpaper, storeWallpaper,
+} from './wallpaper-store.ts'
 
-const NS = settingsNamespace(FRIEREN_SETTINGS_NAMESPACE)
+// The namespace travels as a plain lowercase-hyphen string at runtime; every
+// seam method (`register`/`get`/`update`/`replace`/`mutate`) validates it
+// itself. The brand is a compile-time assertion only: newer builds of
+// `@deepseek-ai/dsh-settings` (0.1.5+) dropped the `settingsNamespace()`
+// helper and accept the raw string, older ones require the branded type.
+const NS = FRIEREN_SETTINGS_NAMESPACE as SettingsNamespace
 
 /** Exact route the browser half fetches to read/write this plugin's settings. */
 export const SETTINGS_BRIDGE_PATH = '/plugins/@zengzhaojun/dsh-client-frieren-zzj/settings'
 
-/** Upper bound for a bridge write body (custom wallpaper data URLs can be large). */
-const MAX_BRIDGE_BODY_BYTES = 4 * 1024 * 1024
+/** Where uploaded wallpapers live, under the harness home. */
+const WALLPAPER_DIR = dshHomePath('plugin-data', 'frieren-zzj', 'wallpapers')
 
 /** Narrow one wire object to a settings path op. */
 function isPathOp(value: unknown): value is SettingsPathOp {
@@ -65,10 +79,103 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString('utf8')
 }
 
+/**
+ * Delete stored wallpapers the settings no longer reference.
+ *
+ * Runs once per activation. A file written but not yet referenced is spared by
+ * the store's grace window, so this can never race an in-flight upload.
+ * @param customWallpapers - the raw `customWallpapers` setting value.
+ */
+async function pruneWallpapers(customWallpapers: unknown): Promise<void> {
+  const referenced = referencedWallpaperNames(customWallpapers)
+  // `readdir` overloads make a pre-declared annotation pick the Buffer variant;
+  // resolving through `catch` keeps the string `Dirent` arm and folds absence
+  // into one branch.
+  const entries = await readdir(WALLPAPER_DIR, { withFileTypes: true }).catch(() => undefined)
+  if (entries === undefined) return
+  const now = Date.now()
+  for (const entry of entries) {
+    if (!entry.isFile()) continue
+    const target = join(WALLPAPER_DIR, entry.name)
+    try {
+      const info = await stat(target)
+      if (!pruneableWallpaper(entry.name, referenced, info.mtimeMs, now)) continue
+      await unlink(target)
+    } catch {
+      // A file that vanished or is locked is simply left for the next sweep.
+    }
+  }
+}
+
+/**
+ * Serve the wallpaper file store: `POST` stores one upload and answers its
+ * URL, `GET`/`HEAD` return a stored image. The browser half treats the whole
+ * route as optional — every failure here just means the image stays inline.
+ * @param req - the incoming request.
+ * @param res - the response to write.
+ */
+async function handleWallpaperStore(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const method = req.method ?? 'GET'
+  if (method === 'POST') {
+    let payload: unknown
+    try {
+      payload = JSON.parse(await readBody(req))
+    } catch (error) {
+      respond(res, 400, { ok: false, error: error instanceof Error ? error.message : 'invalid request body' })
+      return
+    }
+    const bytes = decodeWallpaperUpload((payload as { dataUrl?: unknown } | null)?.dataUrl)
+    if (bytes === undefined) {
+      respond(res, 400, { ok: false, error: 'expected a jpeg, png, or webp data URL within the upload ceiling' })
+      return
+    }
+    const name = await storeWallpaper(WALLPAPER_DIR, bytes).catch(() => undefined)
+    if (name === undefined) {
+      respond(res, 500, { ok: false, error: 'could not store the image' })
+      return
+    }
+    respond(res, 200, { ok: true, url: `${WALLPAPER_ROUTE_PREFIX}/${name}` })
+    return
+  }
+  if (method === 'DELETE') {
+    // Deleting is explicit user intent, so no grace window applies: the bytes
+    // go now. An already-absent file is still a success (idempotent).
+    const name = parseWallpaperRequest(req.url)
+    if (name === undefined) {
+      respond(res, 404, { ok: false, error: 'not found' })
+      return
+    }
+    const removed = await removeWallpaper(WALLPAPER_DIR, name)
+    respond(res, 200, { ok: true, removed, name })
+    return
+  }
+  if (method !== 'GET' && method !== 'HEAD') {
+    respond(res, 405, { ok: false, error: 'method not allowed' })
+    return
+  }
+  const name = parseWallpaperRequest(req.url)
+  if (name === undefined) {
+    respond(res, 404, { ok: false, error: 'not found' })
+    return
+  }
+  const bytes = await loadWallpaper(WALLPAPER_DIR, name)
+  if (bytes === undefined) {
+    respond(res, 404, { ok: false, error: 'not found' })
+    return
+  }
+  res.writeHead(200, {
+    'content-type': 'image/jpeg',
+    'content-length': String(bytes.length),
+    // Content-addressed: the bytes behind a URL never change.
+    'cache-control': 'public, max-age=31536000, immutable',
+  })
+  res.end(method === 'HEAD' ? undefined : bytes)
+}
+
 /** Host plugin body — register the wallpaper switch's durable section and its browser bridge. */
 export function apply(ctx: Context): void {
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.register(settingsNamespace(FRIEREN_SETTINGS_NAMESPACE), FrierenSettingsSchema)
+    settingsCtx.settings.register(NS, FrierenSettingsSchema)
   })
 
   // Browser settings bridge: bypasses the harness's settings RPC allowlist by
@@ -119,5 +226,20 @@ export function apply(ctx: Context): void {
         respond(res, 200, { ok: true, value: settings.get(NS) ?? null })
       },
     }), 'frieren-zzj: settings bridge route')
+
+    // Wallpaper file store. A prefix route (longest-prefix-wins after the
+    // exact table) so one registration serves every stored image.
+    bridgeCtx.effect(() => webServer.register({
+      kind: 'prefix',
+      path: WALLPAPER_ROUTE_PREFIX,
+      handler: handleWallpaperStore,
+    }), 'frieren-zzj: wallpaper store route')
+
+    // Sweep stored images nothing references. The store's grace window spares
+    // anything written within the last hour, so an upload that has been stored
+    // but not yet written into the settings document survives this pass.
+    // The settings service returns the section untyped (`{}`), hence the cast.
+    const section = settings.get(NS) as { customWallpapers?: unknown } | undefined
+    void pruneWallpapers(section?.customWallpapers)
   })
 }

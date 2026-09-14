@@ -9,12 +9,26 @@ export type FrierenLocaleKey =
   | 'wallpaper.upload.button' | 'wallpaper.upload.clear' | 'wallpaper.upload.busy' | 'wallpaper.upload.error'
   | 'wallpaper.blur.title' | 'wallpaper.blur.description'
   | 'wallpaper.blur.none' | 'wallpaper.blur.light' | 'wallpaper.blur.medium' | 'wallpaper.blur.heavy'
+  | 'wallpaper.dim.title' | 'wallpaper.dim.description'
+  | 'wallpaper.dim.none' | 'wallpaper.dim.light' | 'wallpaper.dim.medium' | 'wallpaper.dim.heavy'
+  | 'wallpaper.gallery.full' | 'wallpaper.gallery.remove'
+  | 'carousel.title' | 'carousel.description' | 'carousel.interval'
+  | 'carousel.sequential' | 'carousel.shuffle'
   | 'scheme.title' | 'scheme.description' | 'scheme.light' | 'scheme.dark' | 'scheme.system'
   | 'material.title' | 'material.description' | 'material.glass' | 'material.plain'
   | 'decor.title' | 'decor.description'
   | 'decor.sparkles' | 'decor.flowers' | 'decor.circle' | 'decor.ribbon' | 'decor.vignette'
+  | 'decorTuning.title' | 'decorTuning.description' | 'decorTuning.density' | 'decorTuning.speed'
+  | 'decorTuning.circleScale' | 'decorTuning.reset'
+  | 'perf.title' | 'perf.description' | 'perf.full' | 'perf.balanced' | 'perf.eco' | 'perf.custom'
   | 'quote.title' | 'quote.description' | 'quote.random' | 'quote.fixed'
   | 'quote.series'
+  | 'quote.reroll.hint'
+  | 'casting.label' | 'casting.title'
+  | 'focus.title' | 'focus.description' | 'focus.on' | 'focus.off' | 'focus.seal.hint'
+  | 'backup.title' | 'backup.description' | 'backup.export' | 'backup.import'
+  | 'backup.imported' | 'backup.skippedLabel' | 'backup.failedLabel'
+  | 'backup.error.invalidJson' | 'backup.error.notAnObject' | 'backup.error.noFields'
   | 'quote.custom.title' | 'quote.custom.description' | 'quote.custom.placeholder'
   | 'quote.randomTable.title' | 'quote.randomTable.description'
   | 'quote.randomTable.textHeader' | 'quote.randomTable.speakerHeader' | 'quote.randomTable.glossHeader'
@@ -42,6 +56,19 @@ export const en: Record<FrierenLocaleKey, string> = {
   'wallpaper.blur.light': 'Light',
   'wallpaper.blur.medium': 'Medium',
   'wallpaper.blur.heavy': 'Heavy',
+  'wallpaper.dim.title': 'Wallpaper dimming',
+  'wallpaper.dim.description': 'Darken the wallpaper so text stays readable over busy images (0% = original, 80% = darkest).',
+  'wallpaper.dim.none': 'None',
+  'wallpaper.dim.light': 'Light',
+  'wallpaper.dim.medium': 'Medium',
+  'wallpaper.dim.heavy': 'Heavy',
+  'wallpaper.gallery.full': 'The gallery is full — remove an image before adding another.',
+  'wallpaper.gallery.remove': 'Remove this image',
+  'carousel.title': 'Wallpaper rotation',
+  'carousel.description': 'Shown once the gallery holds two or more images: how often the wallpaper changes, and in which order.',
+  'carousel.interval': 'Interval',
+  'carousel.sequential': 'In order',
+  'carousel.shuffle': 'Shuffle',
   'scheme.title': 'Appearance',
   'scheme.description': 'Pick light, dark, or follow the system. Stays in sync with the Appearance row.',
   'scheme.light': 'Light',
@@ -58,11 +85,41 @@ export const en: Record<FrierenLocaleKey, string> = {
   'decor.circle': 'Magic circle',
   'decor.ribbon': 'Ribbon',
   'decor.vignette': 'Vignette',
+  'decorTuning.title': 'Decoration tuning',
+  'decorTuning.description': 'Control how many decorations appear, how fast they move, and how large the magic circle is.',
+  'decorTuning.density': 'Density',
+  'decorTuning.speed': 'Speed',
+  'decorTuning.circleScale': 'Magic circle size',
+  'decorTuning.reset': 'Reset tuning',
+  'perf.title': 'Performance',
+  'perf.description': 'One click sets the decoration density, animation speed, and material together. Anything tuned by hand shows as custom (no tier pressed).',
+  'perf.full': 'Full',
+  'perf.balanced': 'Balanced',
+  'perf.eco': 'Eco',
+  'perf.custom': 'Custom',
   'quote.title': 'Quotes',
   'quote.description': 'How the quote under the input box rotates.',
   'quote.random': 'Random',
   'quote.fixed': 'Fixed',
   'quote.series': 'Frieren: Beyond Journey\u2019s End',
+  'quote.reroll.hint': 'Click for another line',
+  'casting.label': 'Casting…',
+  'casting.title': 'Frieren is chanting — the model is generating a reply',
+  'focus.title': 'Focus mode',
+  'focus.description': 'Hide every floating decoration (sparkles, blossoms, magic circle, ribbon, vignette) while the wallpaper, palette, fonts, seal, badge, and quote stay. The golden ring in the sidebar footer toggles it too.',
+  'focus.on': 'Focused',
+  'focus.off': 'Decorated',
+  'focus.seal.hint': 'Click to toggle focus mode (hide the decorations)',
+  'backup.title': 'Backup & share',
+  'backup.description': 'Export these theme settings as a JSON file, or import one exported earlier. Import merges the recognized fields over your current settings; the wallpaper travels inside the file, so it can be large.',
+  'backup.export': 'Export settings',
+  'backup.import': 'Import settings',
+  'backup.imported': 'Import complete',
+  'backup.skippedLabel': 'skipped',
+  'backup.failedLabel': 'Import failed',
+  'backup.error.invalidJson': 'that file is not valid JSON',
+  'backup.error.notAnObject': 'expected a JSON object of theme settings',
+  'backup.error.noFields': 'no recognizable theme settings in that file',
   'quote.custom.title': 'Custom fixed quote',
   'quote.custom.description': 'Enter a custom line for the fixed mode (empty = built-in classic Himmel line).',
   'quote.custom.placeholder': 'Enter your custom quote…',
@@ -98,6 +155,19 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'wallpaper.blur.light': '轻度',
   'wallpaper.blur.medium': '中度',
   'wallpaper.blur.heavy': '重度',
+  'wallpaper.dim.title': '壁纸暗度',
+  'wallpaper.dim.description': '压暗壁纸，让文字在花哨背景上依然清晰（0% = 原图，80% = 最暗）。',
+  'wallpaper.dim.none': '无',
+  'wallpaper.dim.light': '轻度',
+  'wallpaper.dim.medium': '中度',
+  'wallpaper.dim.heavy': '重度',
+  'wallpaper.gallery.full': '画廊已满——请先移除一张再加图。',
+  'wallpaper.gallery.remove': '移除这张图',
+  'carousel.title': '壁纸轮播',
+  'carousel.description': '画廊中有两张以上图片时出现：设定壁纸更换的间隔与顺序。',
+  'carousel.interval': '间隔',
+  'carousel.sequential': '顺序',
+  'carousel.shuffle': '随机',
   'scheme.title': '外观模式',
   'scheme.description': '选择浅色、深色或跟随系统，与「外观」设置保持同步。',
   'scheme.light': '浅色',
@@ -114,11 +184,41 @@ export const zh: Record<FrierenLocaleKey, string> = {
   'decor.circle': '魔法阵',
   'decor.ribbon': '彩带',
   'decor.vignette': '暗角',
+  'decorTuning.title': '装饰微调',
+  'decorTuning.description': '调节装饰元素的数量、动画速度，以及魔法阵的大小。',
+  'decorTuning.density': '数量',
+  'decorTuning.speed': '速度',
+  'decorTuning.circleScale': '魔法阵大小',
+  'decorTuning.reset': '恢复默认',
+  'perf.title': '性能档位',
+  'perf.description': '一键同时设定装饰数量、动画速度与整体材质。手动调过任意一项后会显示为「自定义」，此时三个档位都不高亮。',
+  'perf.full': '全效',
+  'perf.balanced': '标准',
+  'perf.eco': '省电',
+  'perf.custom': '自定义',
   'quote.title': '名台词',
   'quote.description': '输入栏下方名台词的轮换方式。',
   'quote.random': '随机',
   'quote.fixed': '固定台词',
   'quote.series': '葬送的芙莉莲',
+  'quote.reroll.hint': '点击换一句',
+  'casting.label': '詠唱中…',
+  'casting.title': '芙莉莲正在咏唱魔法 —— 模型正在生成回复',
+  'focus.title': '专注模式',
+  'focus.description': '隐藏所有飘浮装饰（星光、飘花、魔法阵、彩带、暗角），保留壁纸、配色、字体、金戒指、徽记与名台词。也可以直接点击侧边栏底部的金戒指快速切换。',
+  'focus.on': '已专注',
+  'focus.off': '装饰全开',
+  'focus.seal.hint': '点击切换专注模式（隐藏装饰）',
+  'backup.title': '备份与分享',
+  'backup.description': '把主题设置导出为 JSON 文件，或导入之前导出的文件。导入会把识别出的字段合并到当前设置；壁纸也包含在文件里，因此文件可能较大。',
+  'backup.export': '导出设置',
+  'backup.import': '导入设置',
+  'backup.imported': '导入成功',
+  'backup.skippedLabel': '已忽略',
+  'backup.failedLabel': '导入失败',
+  'backup.error.invalidJson': '该文件不是合法的 JSON',
+  'backup.error.notAnObject': '应为包含主题设置的 JSON 对象',
+  'backup.error.noFields': '文件里没有可识别的主题设置',
   'quote.custom.title': '自定义固定台词',
   'quote.custom.description': '输入固定台词模式的自定义台词（留空 = 使用内置辛美尔经典台词）。',
   'quote.custom.placeholder': '输入你的自定义台词…',

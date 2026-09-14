@@ -5,14 +5,14 @@
  */
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { DecorState } from '../frieren-settings.ts'
+import type { DecorLayer, DecorState } from '../frieren-settings.ts'
 import type { FrierenLocaleKey } from './locales.ts'
 import css from './fri-rows.module.css'
 
 /** Registrant-private business face: per-layer writes plus the live decor state. */
 export interface DecorRowInjected {
   /** Persist one decoration layer switch. */
-  setDecor: (field: keyof DecorState, enabled: boolean) => void
+  setDecor: (field: DecorLayer, enabled: boolean) => void
   /** Bare observable of the full decoration state. */
   hooks: {
     decor: {
@@ -31,7 +31,7 @@ export type DecorRowProps =
   PropsRuntime<'settings.frieren.item'> & PropsLocale<'settings.frieren'> & InjectFace<DecorRowInjected>
 
 /** Chip list in display order. */
-const DECOR_ITEMS: readonly { field: keyof DecorState; labelKey: FrierenLocaleKey }[] = [
+const DECOR_ITEMS: readonly { field: DecorLayer; labelKey: FrierenLocaleKey }[] = [
   { field: 'sparkles', labelKey: 'decor.sparkles' },
   { field: 'flowers', labelKey: 'decor.flowers' },
   { field: 'circle', labelKey: 'decor.circle' },

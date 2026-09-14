@@ -14,6 +14,39 @@ export const CUSTOM_WALLPAPER_FIELD = 'customWallpaper'
 /** Wallpaper blur radius in pixels (0 = sharp, 20 = heavy blur). */
 export const WALLPAPER_BLUR_FIELD = 'wallpaperBlur'
 
+/** Wallpaper dim (darkening overlay) percentage: 0 = off, 80 = heaviest shade. */
+export const WALLPAPER_DIM_FIELD = 'wallpaperDim'
+
+/** Dim ceiling: the heaviest shade the slider offers (percent black overlay). */
+export const MAX_WALLPAPER_DIM = 80
+
+/** Wallpaper gallery: rotation entries as a JSON array of data URLs ('' = none). */
+export const WALLPAPERS_FIELD = 'customWallpapers'
+
+/** Rotation interval of the wallpaper gallery, in seconds. */
+export const CAROUSEL_INTERVAL_FIELD = 'carouselInterval'
+
+/** Rotation order of the wallpaper gallery. */
+export const CAROUSEL_MODE_FIELD = 'carouselMode'
+
+/** How many images the gallery may hold (every entry is a compressed JPEG). */
+export const MAX_WALLPAPERS = 6
+
+/** Rotation order identifiers for the wallpaper gallery. */
+export const WALLPAPER_ROTATIONS = ['sequential', 'shuffle'] as const
+/** Rotation order identifier. */
+export type WallpaperRotation = typeof WALLPAPER_ROTATIONS[number]
+
+/** Default rotation order. */
+export const DEFAULT_CAROUSEL_MODE: WallpaperRotation = 'sequential'
+
+/** Shortest rotation interval the slider offers, in seconds. */
+export const MIN_CAROUSEL_INTERVAL = 5
+/** Longest rotation interval the slider offers, in seconds. */
+export const MAX_CAROUSEL_INTERVAL = 600
+/** Interval a fresh install starts on, in seconds. */
+export const DEFAULT_CAROUSEL_INTERVAL = 30
+
 /** Input-bar material choice: frosted glass or the plain default surface. */
 export const INPUT_MATERIAL_FIELD = 'inputMaterial'
 
@@ -23,6 +56,14 @@ export const DECOR_FLOWERS_FIELD = 'decorFlowers'
 export const DECOR_CIRCLE_FIELD = 'decorCircle'
 export const DECOR_RIBBON_FIELD = 'decorRibbon'
 export const DECOR_VIGNETTE_FIELD = 'decorVignette'
+
+/** Decoration tuning: element density, animation speed, magic-circle scale. */
+export const DECOR_DENSITY_FIELD = 'decorDensity'
+export const DECOR_SPEED_FIELD = 'decorSpeed'
+export const CIRCLE_SCALE_FIELD = 'decorCircleScale'
+
+/** Focus mode: hide the animated decorations, keep wallpaper and theme chrome. */
+export const FOCUS_MODE_FIELD = 'focusMode'
 
 /** Quote rotation mode for the composer dock line. */
 export const QUOTE_MODE_FIELD = 'quoteMode'
@@ -54,7 +95,10 @@ export type InputMaterial = typeof INPUT_MATERIALS[number]
 /** Default input-bar material. */
 export const DEFAULT_INPUT_MATERIAL: InputMaterial = 'glass'
 
-/** The five toggleable decoration layers of the wallpaper stage. */
+/** The five boolean decoration-layer keys of {@link DecorState}. */
+export type DecorLayer = 'sparkles' | 'flowers' | 'circle' | 'ribbon' | 'vignette'
+
+/** The five toggleable decoration layers of the wallpaper stage, plus their tuning. */
 export interface DecorState {
   /** Twinkling gold / periwinkle star specks. */
   sparkles: boolean
@@ -66,6 +110,12 @@ export interface DecorState {
   ribbon: boolean
   /** Corner vignette. */
   vignette: boolean
+  /** Element density multiplier (0.25–2; 1 = the full set). */
+  density: number
+  /** Animation speed multiplier (2 = twice as fast). */
+  speed: number
+  /** Magic-circle scale multiplier. */
+  circleScale: number
 }
 
 /** One custom quote entry for the random quote table. */
@@ -89,6 +139,14 @@ export interface FrierenSettings {
   customWallpaper: string
   /** Wallpaper blur radius in px (0-20, 0 = no blur). */
   wallpaperBlur: number
+  /** Wallpaper dim (darkening overlay) percentage (0-80, 0 = no shading). */
+  wallpaperDim: number
+  /** Wallpaper gallery rotation entries (JSON array of data URLs; '' = single wallpaper only). */
+  customWallpapers: string
+  /** Rotation interval of the gallery, in seconds (5-600). */
+  carouselInterval: number
+  /** Rotation order of the gallery. */
+  carouselMode: WallpaperRotation
   /** Input-bar material: frosted glass or plain. */
   inputMaterial: InputMaterial
   /** Decoration layer switches (see {@link DecorState}). */
@@ -97,6 +155,12 @@ export interface FrierenSettings {
   decorCircle: boolean
   decorRibbon: boolean
   decorVignette: boolean
+  /** Decoration tuning: element density (0.25–2), animation speed (0.25–4), magic-circle scale (0.5–2). */
+  decorDensity: number
+  decorSpeed: number
+  decorCircleScale: number
+  /** Focus mode: decorations off, wallpaper and theme chrome kept. */
+  focusMode: boolean
   /** Quote rotation mode for the composer dock line. */
   quoteMode: QuoteMode
   /** Custom fixed quote text (empty = use built-in classic Himmel line). */
@@ -110,12 +174,20 @@ export const DEFAULT_FRIEREN_SETTINGS: ResolvedFrierenSettings = {
   [ENABLED_FIELD]: true,
   [CUSTOM_WALLPAPER_FIELD]: '',
   [WALLPAPER_BLUR_FIELD]: 0,
+  [WALLPAPER_DIM_FIELD]: 0,
+  [WALLPAPERS_FIELD]: '',
+  [CAROUSEL_INTERVAL_FIELD]: DEFAULT_CAROUSEL_INTERVAL,
+  [CAROUSEL_MODE_FIELD]: DEFAULT_CAROUSEL_MODE,
   [INPUT_MATERIAL_FIELD]: DEFAULT_INPUT_MATERIAL,
   [DECOR_SPARKLES_FIELD]: true,
   [DECOR_FLOWERS_FIELD]: true,
   [DECOR_CIRCLE_FIELD]: true,
   [DECOR_RIBBON_FIELD]: true,
   [DECOR_VIGNETTE_FIELD]: true,
+  [DECOR_DENSITY_FIELD]: 1,
+  [DECOR_SPEED_FIELD]: 1,
+  [CIRCLE_SCALE_FIELD]: 1,
+  [FOCUS_MODE_FIELD]: false,
   [QUOTE_MODE_FIELD]: DEFAULT_QUOTE_MODE,
   [CUSTOM_QUOTE_FIELD]: '',
   [CUSTOM_RANDOM_QUOTES_FIELD]: '',
@@ -126,12 +198,20 @@ export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
   [ENABLED_FIELD]: z.boolean().default(true),
   [CUSTOM_WALLPAPER_FIELD]: z.string().default(''),
   [WALLPAPER_BLUR_FIELD]: z.number().default(0),
+  [WALLPAPER_DIM_FIELD]: z.number().default(0),
+  [WALLPAPERS_FIELD]: z.string().default(''),
+  [CAROUSEL_INTERVAL_FIELD]: z.number().default(DEFAULT_CAROUSEL_INTERVAL),
+  [CAROUSEL_MODE_FIELD]: z.union([...WALLPAPER_ROTATIONS]).default(DEFAULT_CAROUSEL_MODE),
   [INPUT_MATERIAL_FIELD]: z.union([...INPUT_MATERIALS]).default(DEFAULT_INPUT_MATERIAL),
   [DECOR_SPARKLES_FIELD]: z.boolean().default(true),
   [DECOR_FLOWERS_FIELD]: z.boolean().default(true),
   [DECOR_CIRCLE_FIELD]: z.boolean().default(true),
   [DECOR_RIBBON_FIELD]: z.boolean().default(true),
   [DECOR_VIGNETTE_FIELD]: z.boolean().default(true),
+  [DECOR_DENSITY_FIELD]: z.number().default(1),
+  [DECOR_SPEED_FIELD]: z.number().default(1),
+  [CIRCLE_SCALE_FIELD]: z.number().default(1),
+  [FOCUS_MODE_FIELD]: z.boolean().default(false),
   [QUOTE_MODE_FIELD]: z.union([...QUOTE_MODES]).default(DEFAULT_QUOTE_MODE),
   [CUSTOM_QUOTE_FIELD]: z.string().default(''),
   [CUSTOM_RANDOM_QUOTES_FIELD]: z.string().default(''),
@@ -153,6 +233,15 @@ export function isQuoteMode(value: unknown): value is QuoteMode {
  */
 export function isInputMaterial(value: unknown): value is InputMaterial {
   return INPUT_MATERIALS.some(material => material === value)
+}
+
+/**
+ * Narrow one wire value to a persistable wallpaper rotation order.
+ * @param value - value crossing the settings boundary.
+ * @returns whether the value is a built-in rotation order.
+ */
+export function isWallpaperRotation(value: unknown): value is WallpaperRotation {
+  return WALLPAPER_ROTATIONS.some(rotation => rotation === value)
 }
 
 /**
@@ -195,12 +284,20 @@ export function resolveSettings(value: Partial<FrierenSettings> | undefined): Re
     enabled: value?.enabled ?? true,
     customWallpaper: value?.customWallpaper ?? '',
     wallpaperBlur: typeof value?.wallpaperBlur === 'number' ? value.wallpaperBlur : 0,
+    wallpaperDim: typeof value?.wallpaperDim === 'number' ? value.wallpaperDim : 0,
+    customWallpapers: typeof value?.customWallpapers === 'string' ? value.customWallpapers : '',
+    carouselInterval: typeof value?.carouselInterval === 'number' ? value.carouselInterval : DEFAULT_CAROUSEL_INTERVAL,
+    carouselMode: isWallpaperRotation(value?.carouselMode) ? value.carouselMode : DEFAULT_CAROUSEL_MODE,
     inputMaterial: isInputMaterial(value?.inputMaterial) ? value.inputMaterial : DEFAULT_INPUT_MATERIAL,
     decorSparkles: value?.decorSparkles ?? true,
     decorFlowers: value?.decorFlowers ?? true,
     decorCircle: value?.decorCircle ?? true,
     decorRibbon: value?.decorRibbon ?? true,
     decorVignette: value?.decorVignette ?? true,
+    decorDensity: typeof value?.decorDensity === 'number' ? value.decorDensity : 1,
+    decorSpeed: typeof value?.decorSpeed === 'number' ? value.decorSpeed : 1,
+    decorCircleScale: typeof value?.decorCircleScale === 'number' ? value.decorCircleScale : 1,
+    focusMode: value?.focusMode ?? false,
     quoteMode: isQuoteMode(value?.quoteMode) ? value.quoteMode : DEFAULT_QUOTE_MODE,
     customQuote: value?.customQuote ?? '',
     customRandomQuotes: value?.customRandomQuotes ?? '',

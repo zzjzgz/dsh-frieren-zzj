@@ -266,6 +266,55 @@ body[data-ds-dark-theme] .textInput::placeholder {
   flex: none;
 }
 
+/* Wallpaper gallery: the thumbnail strip with one remove control per image. */
+.galleryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.galleryItem {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.galleryRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
+  background: var(--dsw-alias-bg-base, #fff);
+  color: var(--dsw-alias-label-secondary, #6f6a80);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.galleryRemove:hover {
+  color: var(--dsw-alias-state-error-primary, #b0554b);
+  border-color: var(--dsw-alias-state-error-primary, #b0554b);
+}
+
+.galleryRemove:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #5a63b8);
+  outline-offset: 1px;
+}
+
+body[data-ds-dark-theme] .galleryRemove {
+  background: #22243c;
+  color: var(--dsw-alias-label-secondary, #a9a6c4);
+  border-color: var(--dsw-alias-border-l2, #54578c);
+}
+
 .error {
   font-size: 12px;
   color: var(--dsw-alias-state-error-primary, #b0554b);

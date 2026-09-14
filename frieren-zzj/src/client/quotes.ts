@@ -107,12 +107,14 @@ function toFrierenQuote(entry: CustomQuoteEntry): FrierenQuote {
  * @param mode - rotation mode; `fixed` returns the custom or built-in classic line.
  * @param customQuote - user-supplied fixed quote text (empty = built-in).
  * @param customQuotes - user-supplied random list (empty = built-in library).
+ * @param rng - deterministic random source for tests; defaults to Math.random.
  * @returns the selected quote.
  */
 export function pickQuote(
   mode: 'random' | 'fixed',
   customQuote: string = '',
   customQuotes: readonly CustomQuoteEntry[] = [],
+  rng: () => number = Math.random,
 ): FrierenQuote {
   if (mode === 'fixed') {
     if (customQuote !== '') {
@@ -122,7 +124,7 @@ export function pickQuote(
   }
   // random
   const pool = customQuotes.length > 0 ? customQuotes.map(toFrierenQuote) : FRIEREN_QUOTES
-  const index = Math.floor(Math.random() * pool.length)
+  const index = Math.floor(rng() * pool.length)
   const quote = pool[index]
   if (quote === undefined) throw new Error(`frieren-zzj: quote index ${index} out of range`)
   return quote

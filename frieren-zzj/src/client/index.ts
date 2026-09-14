@@ -11,7 +11,7 @@
  * no business state, no model-visible input.
  */
 import * as React from 'react'
-import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the theme service (ctx.theme, theme/change) and slot-name
 // Context merges from the declaring packages (client bundle purity gate: no
@@ -22,6 +22,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the Session root standard-props merge (the `useSession`
+// busy-state selector handed to every session-scoped slot entry).
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 // Type-only: the settings surface's SlotMap merges ('settings.section',
 // 'settings.general.item').
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -29,13 +32,24 @@ import { FRI_BASE_CSS } from './fri-base.css.ts'
 import { FRI_DECOR_CSS } from './fri-theme.css.ts'
 import { GLASS_CSS } from './glass.ts'
 import {
-  CUSTOM_WALLPAPER_FIELD, WALLPAPER_BLUR_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
+  CUSTOM_WALLPAPER_FIELD, WALLPAPER_BLUR_FIELD, WALLPAPER_DIM_FIELD, DECOR_CIRCLE_FIELD, DECOR_FLOWERS_FIELD, DECOR_RIBBON_FIELD,
   DECOR_SPARKLES_FIELD, DECOR_VIGNETTE_FIELD, DEFAULT_FRIEREN_SETTINGS, ENABLED_FIELD,
+  DECOR_DENSITY_FIELD, DECOR_SPEED_FIELD, CIRCLE_SCALE_FIELD, FOCUS_MODE_FIELD,
   INPUT_MATERIAL_FIELD, QUOTE_MODE_FIELD, CUSTOM_QUOTE_FIELD, CUSTOM_RANDOM_QUOTES_FIELD,
+  WALLPAPERS_FIELD, CAROUSEL_INTERVAL_FIELD, CAROUSEL_MODE_FIELD,
   resolveSettings, parseCustomQuotes,
-  type DecorState, type InputMaterial, type QuoteMode,
+  type DecorState, type DecorLayer, type InputMaterial, type QuoteMode, type WallpaperRotation,
 } from '../frieren-settings.ts'
-import { pickQuote, type FrierenQuote } from './quotes.ts'
+import { type FrierenQuote } from './quotes.ts'
+import { nextQuote, type QuoteCache } from './quote-roller.ts'
+import { wallpaperLayerBackground } from './wallpaper-css.ts'
+import { clampInterval, encodeWallpaperList, nextWallpaperIndex, resolveWallpaperList } from './wallpaper-list.ts'
+import { wallpaperFilesToDelete } from '../wallpaper-names.ts'
+import { forgetWallpapers } from './persist-wallpaper.ts'
+import { castingVisible } from './casting.ts'
+import { pickDecorSubset, scaleDuration } from './decor-tuning.ts'
+import type { PerfTier } from './perf-tier.ts'
+import { decorationsVisible } from './focus.ts'
 import { en, zh, type FrierenLocaleKey } from './locales.ts'
 import { FriSettingsBridge } from './fri-settings-bridge.ts'
 import { FriSection } from './FriSection.tsx'
@@ -43,8 +57,13 @@ import { EnableRow, type EnableRowInjected } from './EnableRow.tsx'
 import { ResetRow, type ResetRowInjected } from './ResetRow.tsx'
 import { SchemeRow, type SchemeRowInjected } from './SchemeRow.tsx'
 import { WallpaperUploadRow, type WallpaperUploadRowInjected } from './WallpaperUploadRow.tsx'
+import { WallpaperCarouselRow, type WallpaperCarouselRowInjected } from './WallpaperCarouselRow.tsx'
 import { MaterialRow, type MaterialRowInjected } from './MaterialRow.tsx'
 import { DecorRow, type DecorRowInjected } from './DecorRow.tsx'
+import { DecorTuningRow, type DecorTuningRowInjected } from './DecorTuningRow.tsx'
+import { PerfRow, type PerfRowInjected } from './PerfRow.tsx'
+import { FocusRow, type FocusRowInjected } from './FocusRow.tsx'
+import { BackupRow, type BackupRowInjected } from './BackupRow.tsx'
 import { QuoteModeRow, type QuoteModeRowInjected } from './QuoteModeRow.tsx'
 
 interface SparkleSpec {
@@ -120,24 +139,39 @@ function BlueFlower(props: { size: number; className?: string; style?: React.CSS
 type FriStageProps = InjectFace<{ hooks: {
   enabled: BareObservable<boolean>
   decor: BareObservable<DecorState>
+  focus: BareObservable<boolean>
 } }>
 
 /** Frame-wide decorative stage: glow, sparkles, falling flowers, magic circle, ribbon, vignette. */
-function FriStage({ useEnabled, useDecor }: FriStageProps): React.ReactElement | null {
-  // Both hooks run unconditionally: an early return between hook calls would
+function FriStage({ useEnabled, useDecor, useFocus }: FriStageProps): React.ReactElement | null {
+  // Every hook runs unconditionally: an early return between hook calls would
   // trip React's rules-of-hooks (error #300) and crash the slot entry the
   // moment the switch turns off.
   const enabled = useEnabled(enabled => enabled)
   const decor = useDecor(value => value)
-  if (enabled === false) return null
+  const focus = useFocus(value => value)
+  if (!decorationsVisible(enabled === true, focus === true)) return null
   const sparkles = decor?.sparkles ?? true
   const flowers = decor?.flowers ?? true
   const circle = decor?.circle ?? true
   const ribbon = decor?.ribbon ?? true
   const vignette = decor?.vignette ?? true
+  // Tuning: density thins each set (spread across the viewport rather than
+  // trimmed to one side), speed scales every animation duration, and the
+  // circle scale resizes the magic circle around its own centre.
+  const sparkleSet = pickDecorSubset(SPARKLES, decor?.density ?? 1)
+  const flowerSet = pickDecorSubset(FLOWERS, decor?.density ?? 1)
+  const speed = decor?.speed ?? 1
+  const circleScale = decor?.circleScale ?? 1
   return React.createElement('div', { className: 'fri-stage', 'aria-hidden': true },
+    // The starfield rides inside the stage: the stage is already mounted only
+    // while decorations are visible, so the master switch and focus mode gate
+    // the stars for free, and the stage's own stacking keeps them above the
+    // app frame (a negative-z layer would hide behind the frame's opaque body
+    // paint whenever no wallpaper is set). The dark gate is CSS-only.
+    React.createElement('div', { className: 'fri-stars' }),
     React.createElement('div', { className: 'fri-glow' }),
-    sparkles && SPARKLES.map((s, i) => React.createElement('span', {
+    sparkles && sparkleSet.map((s, i) => React.createElement('span', {
       key: `s${i}`,
       className: s.tone === 'gold' ? 'fri-sparkle fri-sparkle-gold' : 'fri-sparkle fri-sparkle-peri',
       style: {
@@ -145,20 +179,20 @@ function FriStage({ useEnabled, useDecor }: FriStageProps): React.ReactElement |
         top: s.top,
         fontSize: s.size,
         animationDelay: `${s.delay}s`,
-        animationDuration: `${s.dur}s`,
+        animationDuration: `${scaleDuration(s.dur, speed)}s`,
       },
     }, s.tone === 'gold' ? '✦' : '✧')),
-    flowers && FLOWERS.map((f, i) => React.createElement(BlueFlower, {
+    flowers && flowerSet.map((f, i) => React.createElement(BlueFlower, {
       key: `f${i}`,
       size: f.size,
       className: 'fri-flower',
       style: {
         left: f.left,
         animationDelay: `${f.delay}s`,
-        animationDuration: `${f.dur}s`,
+        animationDuration: `${scaleDuration(f.dur, speed)}s`,
       },
     })),
-    circle && React.createElement('div', { className: 'fri-circle' },
+    circle && React.createElement('div', { className: 'fri-circle', style: { transform: `scale(${circleScale})` } },
       React.createElement('div', { className: 'fri-circle-glow' }),
       React.createElement('span', { className: 'fri-circle-ring fri-circle-ring-a' }),
       React.createElement('span', { className: 'fri-circle-ring fri-circle-ring-b' }),
@@ -170,13 +204,34 @@ function FriStage({ useEnabled, useDecor }: FriStageProps): React.ReactElement |
   )
 }
 
-/** Sidebar seal: the hero Himmel's golden ring holding a blue moon weed. */
-type FriSealProps = InjectFace<{ hooks: { enabled: BareObservable<boolean> } }>
+/** Sidebar seal: the hero Himmel's golden ring holding a blue moon weed; clicking it toggles focus mode. */
+type FriSealProps = PropsLocale<'settings.frieren'> & InjectFace<{
+  toggleFocus: () => void
+  hooks: {
+    enabled: BareObservable<boolean>
+    focus: BareObservable<boolean>
+  }
+}>
 
-function FriSeal({ useEnabled }: FriSealProps): React.ReactElement | null {
+function FriSeal({ t, toggleFocus, useEnabled, useFocus }: FriSealProps): React.ReactElement | null {
   const enabled = useEnabled(value => value)
+  const focus = useFocus(value => value)
   if (enabled === false) return null
-  return React.createElement('div', { className: 'fri-seal', title: '勇者ヒンメルの指輪 — 芙莉莲×辛美尔主题' },
+  const focused = focus === true
+  return React.createElement('div', {
+    className: focused ? 'fri-seal fri-seal-focused' : 'fri-seal',
+    title: t('focus.seal.hint'),
+    role: 'button',
+    tabIndex: 0,
+    'aria-pressed': focused,
+    onClick: () => { toggleFocus() },
+    onKeyDown: (event: React.KeyboardEvent) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        toggleFocus()
+      }
+    },
+  },
     React.createElement('span', { className: 'fri-seal-ring' }),
     React.createElement(BlueFlower, { size: 14 }),
   )
@@ -195,20 +250,67 @@ function FriBadge({ useEnabled }: FriBadgeProps): React.ReactElement | null {
 }
 
 /** Composer dock quote: rotates per the quote mode; the gloss rides the tooltip. */
-type FriQuoteProps = PropsLocale<'settings.frieren'> & InjectFace<{ hooks: {
-  quote: BareObservable<FrierenQuote>
-  enabled: BareObservable<boolean>
-} }>
+type FriQuoteProps = PropsLocale<'settings.frieren'> & InjectFace<{
+  rerollQuote: () => void
+  hooks: {
+    quote: BareObservable<FrierenQuote>
+    enabled: BareObservable<boolean>
+  }
+}>
 
-function FriQuote({ t, useQuote, useEnabled }: FriQuoteProps): React.ReactElement | null {
+function FriQuote({ t, rerollQuote, useQuote, useEnabled }: FriQuoteProps): React.ReactElement | null {
   const enabled = useEnabled(value => value)
   const quote = useQuote(value => value)
   if (enabled === false) return null
   if (quote === undefined) return null
-  return React.createElement('div', { className: 'fri-dock', title: quote.zh },
+  // The line is a button in spirit: clicking rolls the next quote. The gloss
+  // and the roll hint share the tooltip.
+  const hint = t('quote.reroll.hint')
+  const tooltip = quote.zh === '' ? hint : `${quote.zh}\n${hint}`
+  return React.createElement('div', {
+    className: 'fri-dock fri-dock-clickable',
+    title: tooltip,
+    role: 'button',
+    tabIndex: 0,
+    onClick: () => { rerollQuote() },
+    onKeyDown: (event: React.KeyboardEvent) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        rerollQuote()
+      }
+    },
+  },
     React.createElement('span', { className: 'fri-dock-star', 'aria-hidden': true }, '✦'),
     React.createElement('span', null, quote.ja),
     quote.speakerJa !== '' && React.createElement('span', { className: 'fri-dock-sub' }, `—— ${quote.speakerJa} · ${t('quote.series')}`),
+  )
+}
+
+/**
+ * Casting badge: a small magic circle floating above the composer card while
+ * the addressed agent is working — "the mage is chanting". Session-scoped, so
+ * `useSession` (a runtime-provided standard prop) carries the busy flag; the
+ * badge renders nothing at all while idle, so it never reserves layout.
+ */
+type FriCastingProps =
+  PropsRuntime<'conversation.input.overlay'>
+  & PropsLocale<'settings.frieren'>
+  & InjectFace<{ hooks: { enabled: BareObservable<boolean> } }>
+
+function FriCasting({ t, useEnabled, useSession }: FriCastingProps): React.ReactElement | null {
+  const enabled = useEnabled(value => value)
+  // Mirrors the composer's own read: `running` is absent when no addressed
+  // agent exists, which must count as idle rather than busy.
+  const running = useSession(s => s.running) ?? false
+  if (!castingVisible(enabled === true, running)) return null
+  return React.createElement('div', {
+    className: 'fri-casting',
+    title: t('casting.title'),
+    role: 'status',
+    'aria-live': 'polite',
+  },
+    React.createElement('span', { className: 'fri-casting-ring', 'aria-hidden': true }),
+    React.createElement('span', null, t('casting.label')),
   )
 }
 
@@ -297,6 +399,7 @@ export function apply(ctx: ClientContext): void {
           state: {
             sparkles: s.decorSparkles, flowers: s.decorFlowers, circle: s.decorCircle,
             ribbon: s.decorRibbon, vignette: s.decorVignette,
+            density: s.decorDensity, speed: s.decorSpeed, circleScale: s.decorCircleScale,
           },
         }
       }
@@ -315,10 +418,53 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => scope.subscribe(fn),
   }
 
+  const wallpaperDimSource: BareObservable<number> = {
+    getSnapshot: () => settingsOf().wallpaperDim,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  const customWallpapersSource: BareObservable<string> = {
+    getSnapshot: () => settingsOf().customWallpapers,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  const carouselIntervalSource: BareObservable<number> = {
+    getSnapshot: () => settingsOf().carouselInterval,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  const carouselModeSource: BareObservable<WallpaperRotation> = {
+    getSnapshot: () => settingsOf().carouselMode,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
   const materialSource: BareObservable<InputMaterial> = {
     getSnapshot: () => settingsOf().inputMaterial,
     subscribe: (fn) => scope.subscribe(fn),
   }
+
+  const decorDensitySource: BareObservable<number> = {
+    getSnapshot: () => settingsOf().decorDensity,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  const decorSpeedSource: BareObservable<number> = {
+    getSnapshot: () => settingsOf().decorSpeed,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  const circleScaleSource: BareObservable<number> = {
+    getSnapshot: () => settingsOf().decorCircleScale,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  const focusModeSource: BareObservable<boolean> = {
+    getSnapshot: () => settingsOf().focusMode,
+    subscribe: (fn) => scope.subscribe(fn),
+  }
+
+  /** Flip focus mode; the sidebar seal and the settings row share this write. */
+  const toggleFocus = (): void => { void scope.set(FOCUS_MODE_FIELD, !settingsOf().focusMode) }
 
   const quoteModeSource: BareObservable<QuoteMode> = {
     getSnapshot: () => settingsOf().quoteMode,
@@ -330,20 +476,39 @@ export function apply(ctx: ClientContext): void {
     subscribe: (fn) => scope.subscribe(fn),
   }
 
-  // Quote resolution: one stable quote per settings revision, so random mode
-  // re-rolls only when the mode (or any settings change) bumps the revision.
-  let quoteCache: { revision: number | undefined; quote: FrierenQuote } | undefined
+  // Quote resolution: one stable quote per (settings revision, local roll), so
+  // random mode re-rolls on any settings change AND when the user clicks the
+  // dock line. The roll counter is deliberately session-local: "one more line"
+  // is a look-at-it-now gesture, not a preference worth persisting.
+  let quoteCache: QuoteCache | undefined
+  let quoteRoll = 0
+  const quoteRollListeners = new Set<() => void>()
   const quoteSource: BareObservable<FrierenQuote> = {
     getSnapshot: () => {
-      const revision = scope.getSnapshot().revision
-      if (quoteCache === undefined || quoteCache.revision !== revision) {
-        const s = settingsOf()
-        const customQuotes = parseCustomQuotes(s.customRandomQuotes)
-        quoteCache = { revision, quote: pickQuote(s.quoteMode, s.customQuote, customQuotes) }
-      }
+      const s = settingsOf()
+      quoteCache = nextQuote(
+        quoteCache,
+        scope.getSnapshot().revision,
+        quoteRoll,
+        s.quoteMode,
+        s.customQuote,
+        parseCustomQuotes(s.customRandomQuotes),
+      )
       return quoteCache.quote
     },
-    subscribe: (fn) => scope.subscribe(fn),
+    subscribe: (fn) => {
+      const unsubscribe = scope.subscribe(fn)
+      quoteRollListeners.add(fn)
+      return () => { unsubscribe(); quoteRollListeners.delete(fn) }
+    },
+  }
+
+  /** Roll the next dock quote without touching settings. */
+  const rerollQuote = (): void => {
+    quoteRoll += 1
+    // Notify a snapshot of the listeners: a subscriber may unsubscribe while
+    // reacting, which must not perturb this iteration.
+    for (const fn of [...quoteRollListeners]) fn()
   }
 
   // The appearance preference rides the theme service's own durable
@@ -410,35 +575,96 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     document.head.appendChild(transparencyTag)
 
     let layer: HTMLDivElement | null = null
-    const sync = (): void => {
+    let timer: ReturnType<typeof setInterval> | null = null
+    let index = 0
+    let period = -1
+
+    /** Ensure the fixed wallpaper layer exists and return it. */
+    const ensureLayer = (): HTMLDivElement => {
+      if (layer === null) {
+        layer = document.createElement('div')
+        layer.dataset.frierenWallpaperLayer = ''
+        layer.style.cssText = 'position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;transform:scale(1.1);transition:filter 0.3s ease;'
+        document.body.appendChild(layer)
+      }
+      return layer
+    }
+
+    const clearTimer = (): void => {
+      if (timer !== null) {
+        clearInterval(timer)
+        timer = null
+      }
+      period = -1
+    }
+
+    /**
+     * Paint the gallery image at the current index. Settings are read fresh on
+     * every call, so the rotation tick never paints from a stale closure.
+     */
+    const apply = (): void => {
       const s = settingsOf()
-      const custom = s.customWallpaper
-      const blur = s.wallpaperBlur
-      if (s.enabled && custom !== '') {
-        if (layer === null) {
-          layer = document.createElement('div')
-          layer.dataset.frierenWallpaperLayer = ''
-          layer.style.cssText = 'position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;transform:scale(1.1);transition:filter 0.3s ease;'
-          document.body.appendChild(layer)
-        }
-        // Always update: re-uploads change the URL and the blur slider
-        // changes the filter value continuously.
-        layer.style.backgroundImage = `url("${custom}")`
-        const clamped = Math.max(0, Math.min(20, blur))
-        layer.style.filter = clamped > 0 ? `blur(${clamped}px)` : 'none'
-        // Mark the body so the transparency CSS kicks in.
-        document.body.setAttribute('data-frieren-wallpaper', 'on')
-      } else {
+      const list = resolveWallpaperList(s.customWallpaper, s.customWallpapers)
+      if (!s.enabled || list.length === 0) {
+        clearTimer()
         if (layer !== null) {
           layer.remove()
           layer = null
         }
         document.body.removeAttribute('data-frieren-wallpaper')
+        return
       }
+      if (index >= list.length) index = 0
+      const url = list[index] ?? list[0]
+      if (url === undefined) return
+      const el = ensureLayer()
+      // Always update: the rotation tick, re-uploads, the blur slider, and the
+      // dim slider all land here.
+      el.style.backgroundImage = wallpaperLayerBackground(url, s.wallpaperDim)
+      const clamped = Math.max(0, Math.min(20, s.wallpaperBlur))
+      el.style.filter = clamped > 0 ? `blur(${clamped}px)` : 'none'
+      // Mark the body so the transparency CSS kicks in.
+      document.body.setAttribute('data-frieren-wallpaper', 'on')
+    }
+
+    /** Keep the rotation timer in step with the gallery size and the interval. */
+    const syncTimer = (): void => {
+      const s = settingsOf()
+      const list = resolveWallpaperList(s.customWallpaper, s.customWallpapers)
+      if (!s.enabled || list.length <= 1) {
+        clearTimer()
+        return
+      }
+      const wanted = clampInterval(s.carouselInterval) * 1000
+      if (timer !== null && period === wanted) return
+      clearTimer()
+      timer = setInterval(() => {
+        const now = settingsOf()
+        const live = resolveWallpaperList(now.customWallpaper, now.customWallpapers)
+        if (!now.enabled || live.length <= 1) {
+          clearTimer()
+          apply()
+          return
+        }
+        index = nextWallpaperIndex(index, live.length, now.carouselMode)
+        apply()
+      }, wanted)
+      period = wanted
+    }
+
+    const sync = (): void => {
+      apply()
+      syncTimer()
     }
     sync()
     const unsubscribe = scope.subscribe(sync)
-    return () => { unsubscribe(); transparencyTag.remove(); if (layer !== null) layer.remove(); document.body.removeAttribute('data-frieren-wallpaper') }
+    return () => {
+      unsubscribe()
+      clearTimer()
+      transparencyTag.remove()
+      if (layer !== null) layer.remove()
+      document.body.removeAttribute('data-frieren-wallpaper')
+    }
   }, 'frieren-zzj: custom wallpaper layer')
 
   // Input-card material stylesheet: present exactly while the plugin is on
@@ -474,6 +700,7 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
       hooks: {
         enabled: enabledSource,
         decor: decorSource,
+        focus: focusModeSource,
       },
     }),
   }, FriStage))
@@ -483,7 +710,11 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     id: 'frieren-seal',
     order: 100,
     label: () => '勇者辛美尔的金戒指',
-    inject: () => ({ hooks: { enabled: enabledSource } }),
+    locale: LOCALE_NS,
+    inject: () => ({
+      toggleFocus,
+      hooks: { enabled: enabledSource, focus: focusModeSource },
+    }),
   }, FriSeal))
 
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
@@ -499,8 +730,18 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     id: 'frieren-quote',
     order: 100,
     locale: LOCALE_NS,
-    inject: () => ({ hooks: { quote: quoteSource, enabled: enabledSource } }),
+    inject: () => ({ rerollQuote, hooks: { quote: quoteSource, enabled: enabledSource } }),
   }, FriQuote))
+
+  // Casting badge: session-scoped, so the runtime hands it the `useSession`
+  // busy selector; it renders nothing while the agent is idle.
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+    name: 'conversation.input.overlay',
+    id: 'frieren-casting',
+    order: 90,
+    locale: LOCALE_NS,
+    inject: () => ({ hooks: { enabled: enabledSource } }),
+  }, FriCasting))
 
   // The Frieren theme settings section: a nav entry beside General, owning
   // its own item slot so every theme setting lives in one page.
@@ -545,12 +786,55 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     order: 30,
     locale: LOCALE_NS,
     inject: (): WallpaperUploadRowInjected => ({
-      setCustomWallpaper: (dataUrl: string) => { void scope.set(CUSTOM_WALLPAPER_FIELD, dataUrl) },
-      clearCustomWallpaper: () => { void scope.set(CUSTOM_WALLPAPER_FIELD, '') },
       setWallpaperBlur: (blur: number) => { void scope.set(WALLPAPER_BLUR_FIELD, blur) },
-      hooks: { customWallpaper: customWallpaperSource, wallpaperBlur: wallpaperBlurSource, enabled: enabledSource },
+      setWallpaperDim: (dim: number) => { void scope.set(WALLPAPER_DIM_FIELD, dim) },
+      // Read straight from the settings bridge, not from a render snapshot: the
+      // upload flow checks capacity while an upload is in flight.
+      readGallery: () => {
+        const s = settingsOf()
+        return resolveWallpaperList(s.customWallpaper, s.customWallpapers)
+      },
+      // The gallery becomes the single source of truth from the first edit on:
+      // writing it also clears the legacy single-wallpaper field, which the
+      // resolver folds into the list until then.
+      setGallery: (list: readonly string[]) => {
+        void scope.set(WALLPAPERS_FIELD, encodeWallpaperList(list))
+        void scope.set(CUSTOM_WALLPAPER_FIELD, '')
+      },
+      clearGallery: () => {
+        void scope.set(WALLPAPERS_FIELD, '')
+        void scope.set(CUSTOM_WALLPAPER_FIELD, '')
+      },
+      hooks: {
+        customWallpaper: customWallpaperSource,
+        customWallpapers: customWallpapersSource,
+        wallpaperBlur: wallpaperBlurSource,
+        wallpaperDim: wallpaperDimSource,
+        enabled: enabledSource,
+      },
     }),
   }, WallpaperUploadRow))
+
+  // Gallery rotation controls: only meaningful with two or more images, so the
+  // row hides itself while the gallery holds fewer (it still mounts, keeping
+  // the hooks unconditional).
+  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
+    name: 'settings.frieren.item',
+    id: 'frieren-carousel',
+    order: 32,
+    locale: LOCALE_NS,
+    inject: (): WallpaperCarouselRowInjected => ({
+      setInterval: (seconds: number) => { void scope.set(CAROUSEL_INTERVAL_FIELD, seconds) },
+      setMode: (mode: WallpaperRotation) => { void scope.set(CAROUSEL_MODE_FIELD, mode) },
+      hooks: {
+        gallery: customWallpapersSource,
+        single: customWallpaperSource,
+        interval: carouselIntervalSource,
+        mode: carouselModeSource,
+        enabled: enabledSource,
+      },
+    }),
+  }, WallpaperCarouselRow))
 
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',
@@ -569,7 +853,7 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     order: 40,
     locale: LOCALE_NS,
     inject: (): DecorRowInjected => ({
-      setDecor: (field: keyof DecorState, enabled: boolean) => {
+      setDecor: (field: DecorLayer, enabled: boolean) => {
         const fieldName = field === 'sparkles' ? DECOR_SPARKLES_FIELD
           : field === 'flowers' ? DECOR_FLOWERS_FIELD
             : field === 'circle' ? DECOR_CIRCLE_FIELD
@@ -580,6 +864,56 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
       hooks: { decor: decorSource, enabled: enabledSource },
     }),
   }, DecorRow))
+
+  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
+    name: 'settings.frieren.item',
+    id: 'frieren-decor-tuning',
+    order: 45,
+    locale: LOCALE_NS,
+    inject: (): DecorTuningRowInjected => ({
+      setDensity: (value: number) => { void scope.set(DECOR_DENSITY_FIELD, value) },
+      setSpeed: (value: number) => { void scope.set(DECOR_SPEED_FIELD, value) },
+      setCircleScale: (value: number) => { void scope.set(CIRCLE_SCALE_FIELD, value) },
+      hooks: {
+        density: decorDensitySource,
+        speed: decorSpeedSource,
+        circleScale: circleScaleSource,
+        enabled: enabledSource,
+      },
+    }),
+  }, DecorTuningRow))
+
+  // Performance tiers: one click writes density, speed, and material together.
+  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
+    name: 'settings.frieren.item',
+    id: 'frieren-perf',
+    order: 46,
+    locale: LOCALE_NS,
+    inject: (): PerfRowInjected => ({
+      setTier: (tier: PerfTier) => {
+        void scope.set(DECOR_DENSITY_FIELD, tier.density)
+        void scope.set(DECOR_SPEED_FIELD, tier.speed)
+        void scope.set(INPUT_MATERIAL_FIELD, tier.material)
+      },
+      hooks: {
+        density: decorDensitySource,
+        speed: decorSpeedSource,
+        material: materialSource,
+        enabled: enabledSource,
+      },
+    }),
+  }, PerfRow))
+
+  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
+    name: 'settings.frieren.item',
+    id: 'frieren-focus',
+    order: 42,
+    locale: LOCALE_NS,
+    inject: (): FocusRowInjected => ({
+      setFocusMode: (value: boolean) => { void scope.set(FOCUS_MODE_FIELD, value) },
+      hooks: { focus: focusModeSource, enabled: enabledSource },
+    }),
+  }, FocusRow))
 
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',
@@ -598,6 +932,31 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
       },
     }),
   }, QuoteModeRow))
+
+  ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
+    name: 'settings.frieren.item',
+    id: 'frieren-backup',
+    order: 53,
+    locale: LOCALE_NS,
+    inject: (): BackupRowInjected => ({
+      readSettings: () => settingsOf(),
+      // Merge, never wholesale-replace: an imported file that predates a field
+      // must leave that field (and an absent wallpaper) alone.
+      importSettings: (value) => {
+        const before = settingsOf()
+        const merged = { ...before, ...value }
+        void scope.replace(merged)
+        // An import can drop store-backed images just like a manual removal, so
+        // the files it orphans go too (best effort; the activation sweep is the
+        // backstop for anything that survives).
+        void forgetWallpapers(wallpaperFilesToDelete(
+          resolveWallpaperList(before.customWallpaper, before.customWallpapers),
+          resolveWallpaperList(merged.customWallpaper, merged.customWallpapers),
+        ))
+      },
+      hooks: { enabled: enabledSource },
+    }),
+  }, BackupRow))
 
   ctx.slots.inject('settings.frieren.item', () => ctx.slots.register({
     name: 'settings.frieren.item',

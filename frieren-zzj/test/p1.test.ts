@@ -3,14 +3,21 @@
  *
  *   node --test test/p1.test.ts
  *
- * Covers the pure logic shipped in P1: the wallpaper dim composer, the
- * `wallpaperDim` settings resolution, the quote roller cache, and the shared
- * reduced-motion stylesheet block. No external test dependencies.
+ * Covers the pure logic shipped in P1: the wallpaper veil composer and the
+ * palette-aware transparency sheet it feeds (including the contrast floor that
+ * keeps light-palette text readable over a wallpaper), the `wallpaperDim`
+ * settings resolution, the quote roller cache, and the shared reduced-motion
+ * stylesheet block. No external test dependencies.
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { wallpaperLayerBackground } from '../src/client/wallpaper-css.ts'
+import {
+  WALLPAPER_LAYER_STYLE, WALLPAPER_TRANSPARENCY_CSS, WALLPAPER_VEIL_BACKGROUND, WALLPAPER_VEIL_STYLE,
+  wallpaperLayerImage, wallpaperVeilOpacity,
+} from '../src/client/wallpaper-css.ts'
+import { WALLPAPER_REST_SCALE } from '../src/client/wallpaper-transition.ts'
+import { GLASS_CSS } from '../src/client/glass.ts'
 import { nextQuote } from '../src/client/quote-roller.ts'
 import { resolveSettings } from '../src/frieren-settings.ts'
 import { FRIEREN_QUOTES } from '../src/client/quotes.ts'
@@ -20,40 +27,109 @@ import { FRI_BASE_CSS } from '../src/client/fri-base.css.ts'
 const IMG = 'data:image/jpeg;base64,ABC'
 
 // ---------------------------------------------------------------------------
-// wallpaperLayerBackground — the dim overlay composer
+// The wallpaper layers — one image per layer, the veil on its own
 // ---------------------------------------------------------------------------
 
-test('dim 0 renders the bare url with no gradient layer', () => {
-  assert.equal(wallpaperLayerBackground(IMG, 0), `url("${IMG}")`)
+test('an image layer carries nothing but the image url', () => {
+  assert.equal(wallpaperLayerImage(''), '')
+  assert.equal(wallpaperLayerImage(IMG), `url("${IMG}")`)
 })
 
-test('dim 45 stacks a 0.45 black gradient over the url', () => {
-  assert.equal(
-    wallpaperLayerBackground(IMG, 45),
-    `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url("${IMG}")`,
-  )
+test('the veil strength is the dim percentage, clamped to its ceiling', () => {
+  assert.equal(wallpaperVeilOpacity(0), 0)
+  assert.equal(wallpaperVeilOpacity(60), 0.6)
+  assert.equal(wallpaperVeilOpacity(-5), 0)
+  assert.equal(wallpaperVeilOpacity(200), 0.8)
 })
 
-test('dim above 80 clamps to the 0.8 ceiling', () => {
-  assert.equal(
-    wallpaperLayerBackground(IMG, 200),
-    `linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url("${IMG}")`,
-  )
+test('the image layers rest exactly on the scale the fly-through lands on', () => {
+  assert.match(WALLPAPER_LAYER_STYLE, /position:\s*fixed/)
+  assert.match(WALLPAPER_LAYER_STYLE, /background-size:\s*cover/)
+  assert.ok(WALLPAPER_LAYER_STYLE.includes(`transform:scale(${WALLPAPER_REST_SCALE})`))
+  // A transform animation must composite the layer, not re-rasterize a
+  // viewport-anchored background on every frame.
+  assert.doesNotMatch(WALLPAPER_LAYER_STYLE, /background-attachment/)
 })
 
-test('negative dim clamps back to the bare url', () => {
-  assert.equal(wallpaperLayerBackground(IMG, -5), `url("${IMG}")`)
+test('no wallpaper layer bakes in a color: the veil reads the palette variable', () => {
+  // A literal black or white veil would freeze the feature into one palette and
+  // break the other one's text contrast (the light-palette readability fix).
+  assert.ok(WALLPAPER_VEIL_BACKGROUND.includes('var(--fri-wallpaper-scrim-rgb'))
+  for (const sheet of [WALLPAPER_LAYER_STYLE, WALLPAPER_VEIL_STYLE, WALLPAPER_VEIL_BACKGROUND]) {
+    assert.doesNotMatch(sheet, /#[0-9a-f]{3}|rgba?\(\s*\d/i, `a color literal leaked into: ${sheet}`)
+  }
 })
 
-test('fractional dim maps onto the exact alpha', () => {
-  assert.equal(
-    wallpaperLayerBackground(IMG, 12.5),
-    `linear-gradient(rgba(0, 0, 0, 0.125), rgba(0, 0, 0, 0.125)), url("${IMG}")`,
-  )
+test('the veil keeps its own layer so a swap never flashes the raw wallpaper', () => {
+  assert.match(WALLPAPER_VEIL_STYLE, /position:\s*fixed/)
+  assert.match(WALLPAPER_VEIL_STYLE, /transition:\s*opacity/)
 })
 
-test('empty wallpaper composes to an empty value', () => {
-  assert.equal(wallpaperLayerBackground('', 45), '')
+// ---------------------------------------------------------------------------
+// The palette-aware transparency sheet — the light-theme readability contract
+// ---------------------------------------------------------------------------
+
+/** Light-palette ink (`--dsw-alias-label-primary` = bluish-1000) as sRGB. */
+const LIGHT_INK: readonly [number, number, number] = [15, 17, 21]
+
+/** The darkest thing a wallpaper can put behind a surface. */
+const BLACK_PAPER: readonly [number, number, number] = [0, 0, 0]
+
+/** WCAG relative luminance of an opaque sRGB color (0-255 channels). */
+function luminance(color: readonly [number, number, number]): number {
+  const [r, g, b] = color.map((channel) => {
+    const srgb = channel / 255
+    return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4
+  }) as [number, number, number]
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/** WCAG contrast ratio between two opaque sRGB colors. */
+function contrast(a: readonly [number, number, number], b: readonly [number, number, number]): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** Composite a translucent white over an opaque backdrop (source-over). */
+function whiteOver(alpha: number, backdrop: readonly [number, number, number]): readonly [number, number, number] {
+  return backdrop.map((channel) => Math.round(alpha * 255 + (1 - alpha) * channel)) as unknown as readonly [number, number, number]
+}
+
+/** Pull one `rgba(255, 255, 255, <alpha>)` alpha out of a stylesheet block. */
+function whiteAlpha(source: string, property: string): number {
+  const match = new RegExp(`${property}: rgba\\(255, 255, 255, ([\\d.]+)\\)`).exec(source)
+  assert.ok(match, `no translucent white found for ${property}`)
+  return Number(match[1])
+}
+
+const LIGHT_BLOCK = WALLPAPER_TRANSPARENCY_CSS.slice(WALLPAPER_TRANSPARENCY_CSS.indexOf(':not([data-ds-dark-theme])'))
+
+test('the sheet keeps the app frame transparent and the veil palette-bound', () => {
+  assert.match(WALLPAPER_TRANSPARENCY_CSS, /body\[data-frieren-wallpaper\]\s*{[^}]*--dsw-alias-bg-base: transparent/)
+  // Dark palette shades; everything else stays exactly as it shipped.
+  assert.match(WALLPAPER_TRANSPARENCY_CSS, /--fri-wallpaper-scrim-rgb: 0, 0, 0/)
+  assert.match(WALLPAPER_TRANSPARENCY_CSS, /body\[data-ds-dark-theme\]\[data-frieren-wallpaper\]\s*{[^}]*--dsw-specific-bubble: rgba\(255, 255, 255, 0\.05\)/)
+})
+
+test('the light palette mists the wallpaper instead of shading it', () => {
+  assert.ok(LIGHT_BLOCK.length > 0, 'the light-palette block is missing')
+  assert.match(LIGHT_BLOCK, /--fri-wallpaper-scrim-rgb: 255, 255, 255/)
+})
+
+test('light-palette text surfaces keep 4.5:1 over the darkest wallpaper', () => {
+  for (const property of ['--dsw-specific-sidebar-fill', '--dsw-specific-input-major', '--dsw-specific-bubble']) {
+    const ratio = contrast(LIGHT_INK, whiteOver(whiteAlpha(LIGHT_BLOCK, property), BLACK_PAPER))
+    assert.ok(ratio >= 4.5, `${property} leaves light-palette ink at ${ratio.toFixed(2)}:1`)
+  }
+})
+
+test('the glass light variant keeps 4.5:1 over the darkest wallpaper', () => {
+  const alpha = whiteAlpha(GLASS_CSS, 'background')
+  const ratio = contrast(LIGHT_INK, whiteOver(alpha, BLACK_PAPER))
+  assert.ok(ratio >= 4.5, `the light glass leaves light-palette ink at ${ratio.toFixed(2)}:1`)
+  // The pre-fix 0.25 white is what made the settings panel unreadable over a
+  // dimmed wallpaper: keep the regression pinned.
+  assert.ok(contrast(LIGHT_INK, whiteOver(0.25, BLACK_PAPER)) < 3)
 })
 
 // ---------------------------------------------------------------------------

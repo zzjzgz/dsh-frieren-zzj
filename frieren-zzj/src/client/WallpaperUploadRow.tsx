@@ -12,8 +12,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { MAX_WALLPAPERS, MAX_WALLPAPER_DIM } from '../frieren-settings.ts'
-import { wallpaperLayerBackground } from './wallpaper-css.ts'
+import { MAX_WALLPAPERS, MAX_WALLPAPER_BLUR, MAX_WALLPAPER_DIM } from '../frieren-settings.ts'
+import { wallpaperVeilOpacity } from './wallpaper-css.ts'
 import { persistWallpaper, forgetWallpapers } from './persist-wallpaper.ts'
 import { addWallpaper } from './wallpaper-add.ts'
 import { wallpaperFilesToDelete } from '../wallpaper-names.ts'
@@ -118,31 +118,30 @@ async function fileToDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Apply the blur filter directly to the wallpaper DOM layer for instant
- * visual feedback (no round-trip through settings → HTTP → re-render).
+ * Apply the blur filter directly to the wallpaper image layers for instant
+ * visual feedback (no round-trip through settings → HTTP → re-render). Both
+ * slots are written: whichever one the next fly-through uses must already rest
+ * at the same blur, or the incoming image would snap into focus at the end.
  * @param blurPx - the blur radius in pixels.
  */
 function pokeLayerBlur(blurPx: number): void {
-  const layer = document.querySelector('[data-frieren-wallpaper-layer]')
-  if (layer instanceof HTMLElement) {
-    const clamped = Math.max(0, Math.min(20, blurPx))
-    layer.style.filter = clamped > 0 ? `blur(${clamped}px)` : 'none'
+  const clamped = Math.max(0, Math.min(MAX_WALLPAPER_BLUR, blurPx))
+  const filter = clamped > 0 ? `blur(${clamped}px)` : 'none'
+  for (const layer of document.querySelectorAll('[data-frieren-wallpaper-layer]')) {
+    if (layer instanceof HTMLElement) layer.style.filter = filter
   }
 }
 
 /**
- * Apply the dim overlay directly to the wallpaper layer for instant visual
- * feedback. With a rotating gallery the layer's own inline style is the only
- * place that knows which image is on screen, so the poke reads the URL back
- * out of it instead of guessing the index.
+ * Apply the veil strength directly to the veil layer for instant visual
+ * feedback. The veil is its own full-viewport layer above both image layers, so
+ * this is a single opacity write — it cannot disturb a swap in flight, and the
+ * dim percentage no longer has to be parsed back out of a background string.
  * @param dim - the dim percentage.
  */
 function pokeLayerDim(dim: number): void {
-  const layer = document.querySelector('[data-frieren-wallpaper-layer]')
-  if (!(layer instanceof HTMLElement)) return
-  const current = /url\((?:"|')?(.*?)(?:"|')?\)\s*$/.exec(layer.style.backgroundImage)?.[1]
-  if (current === undefined || current === '') return
-  layer.style.backgroundImage = wallpaperLayerBackground(current, dim)
+  const veil = document.querySelector('[data-frieren-wallpaper-veil]')
+  if (veil instanceof HTMLElement) veil.style.opacity = String(wallpaperVeilOpacity(dim))
 }
 
 /**
@@ -228,14 +227,14 @@ export function WallpaperUploadRow({ t, setGallery, clearGallery, setWallpaperBl
 
   /** Commit a blur value: update local state, poke the DOM layer, debounce the persisted write. */
   const commitBlur = (v: number, immediate = false): void => {
-    const clamped = Math.max(0, Math.min(20, v))
+    const clamped = Math.max(0, Math.min(MAX_WALLPAPER_BLUR, v))
     setDragBlur(clamped)
     pokeLayerBlur(clamped)
     if (persistTimer.current !== null) clearTimeout(persistTimer.current)
     persistTimer.current = setTimeout(() => { setWallpaperBlur(clamped) }, immediate ? 0 : 400)
   }
 
-  /** Commit a dim value: update local state, poke the DOM layer, debounce the persisted write. */
+  /** Commit a dim value: update local state, poke the veil layer, debounce the persisted write. */
   const commitDim = (v: number, immediate = false): void => {
     const clamped = Math.max(0, Math.min(MAX_WALLPAPER_DIM, v))
     setDragDim(clamped)
@@ -314,7 +313,7 @@ export function WallpaperUploadRow({ t, setGallery, clearGallery, setWallpaperBl
             <input
               type="range"
               min="0"
-              max="20"
+              max={MAX_WALLPAPER_BLUR}
               step="0.5"
               value={dragBlur}
               className={css.slider}

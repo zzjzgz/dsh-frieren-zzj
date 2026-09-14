@@ -42,13 +42,15 @@ import {
 } from '../frieren-settings.ts'
 import { type FrierenQuote } from './quotes.ts'
 import { nextQuote, type QuoteCache } from './quote-roller.ts'
-import { wallpaperLayerBackground } from './wallpaper-css.ts'
+import { WALLPAPER_TRANSPARENCY_CSS } from './wallpaper-css.ts'
+import { createWallpaperStage } from './wallpaper-stage.ts'
+import { type WallpaperPaintReason } from './wallpaper-transition.ts'
 import { clampInterval, encodeWallpaperList, nextWallpaperIndex, resolveWallpaperList } from './wallpaper-list.ts'
 import { wallpaperFilesToDelete } from '../wallpaper-names.ts'
 import { forgetWallpapers } from './persist-wallpaper.ts'
 import { castingVisible } from './casting.ts'
 import { pickDecorSubset, scaleDuration } from './decor-tuning.ts'
-import type { PerfTier } from './perf-tier.ts'
+import { detectPerfTier, type PerfTier } from './perf-tier.ts'
 import { decorationsVisible } from './focus.ts'
 import { en, zh, type FrierenLocaleKey } from './locales.ts'
 import { FriSettingsBridge } from './fri-settings-bridge.ts'
@@ -105,6 +107,9 @@ const FLOWERS: readonly FlowerSpec[] = [
   { left: '84%', size: 12, delay: 5, dur: 16 },
   { left: '47%', size: 9, delay: 11, dur: 18 },
 ]
+
+/** How long a rotation waits for the next image to decode before flying anyway. */
+const WALLPAPER_DECODE_TIMEOUT_MS = 1500
 
 /** Bare observable the renderer binds into a use<Name> selector hook. */
 interface BareObservable<T> {
@@ -543,52 +548,80 @@ export function apply(ctx: ClientContext): void {
     return () => { unsubscribe(); tag.remove() }
   }, 'frieren-zzj: decor stylesheet')
 
-  // Custom wallpaper layer: when a user uploads an image, a fixed full-screen
-  // <div> is mounted BEHIND the body (z-index:-2). The key insight (borrowed
-  // from dsh-wallpaper-engine) is that the DSH app frame paints an opaque
-  // background via the --dsw-alias-bg-base token, which would completely hide
-  // a z-index:-1 layer. To make the wallpaper visible, we set a body attribute
-  // `data-frieren-wallpaper` and inject CSS that overrides --dsw-alias-bg-base
-  // (and the sidebar fill) to transparent while a wallpaper is active. The
-  // blur slider controls the layer's CSS `filter: blur()` property directly;
-  // `transform: scale(1.1)` prevents blurred edges from showing, and
-  // `transition: filter 0.3s ease` provides the smooth animation.
-  // Initial state is NO wallpaper (the div is absent).
+  // Custom wallpaper stage: two fixed full-viewport image layers mounted BEHIND
+  // the app frame (negative z-index), plus the veil that keeps text readable over
+  // them. The key insight (borrowed from dsh-wallpaper-engine) is that the DSH
+  // app frame paints an opaque background via the --dsw-alias-bg-base token,
+  // which would completely hide a negative-z layer; so we set a body attribute
+  // `data-frieren-wallpaper` and inject WALLPAPER_TRANSPARENCY_CSS, which
+  // overrides --dsw-alias-bg-base (and the sidebar fill) while a wallpaper is
+  // active — per palette, so the light theme keeps a light surface under its
+  // near-black ink instead of dropping the text onto the image.
+  //
+  // Two image layers exist because the carousel's rotation is a DEPTH FLY-THROUGH
+  // (planned by ./wallpaper-transition.ts): the incoming image arrives from the
+  // distance while the outgoing one is flung past the viewer. Only a rotation
+  // tick animates — every other paint (blur/dim drag, upload, switch, first
+  // mount) hard-cuts, or the UI would fly on each slider step.
+  // Initial state is NO wallpaper (no layer is mounted).
   ctx.effect(() => {
     // Inject the transparency CSS once (idempotent).
     const transparencyTag = document.createElement('style')
     transparencyTag.dataset.pluginCss = 'frieren-zzj-wallpaper-transparency'
-    transparencyTag.textContent = `
-body[data-frieren-wallpaper] {
-  --dsw-alias-bg-base: transparent;
-  --dsw-specific-sidebar-fill: transparent;
-}
-body[data-frieren-wallpaper] {
-  --dsw-specific-input-major: rgba(255, 255, 255, 0.15);
-  --dsw-specific-bubble: rgba(255, 255, 255, 0.12);
-}
-body[data-ds-dark-theme][data-frieren-wallpaper] {
-  --dsw-specific-input-major: rgba(255, 255, 255, 0.06);
-  --dsw-specific-bubble: rgba(255, 255, 255, 0.05);
-}
-`
+    transparencyTag.textContent = WALLPAPER_TRANSPARENCY_CSS
     document.head.appendChild(transparencyTag)
 
-    let layer: HTMLDivElement | null = null
+    /** Whether the user asked for reduced motion (the OS-level switch). */
+    const prefersReducedMotion = (): boolean =>
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    /**
+     * Resolve once the image can be painted, or after the timeout: a flight that
+     * starts before the bitmap is decoded would fade in an empty layer.
+     */
+    const decodeWallpaper = (url: string, timeoutMs: number): Promise<void> =>
+      new Promise((resolve) => {
+        if (typeof Image !== 'function') {
+          resolve()
+          return
+        }
+        let timerId: ReturnType<typeof setTimeout> | undefined
+        let done = false
+        const settleDecode = (): void => {
+          if (done) return
+          done = true
+          if (timerId !== undefined) clearTimeout(timerId)
+          resolve()
+        }
+        timerId = setTimeout(settleDecode, timeoutMs)
+        const image = new Image()
+        image.onload = settleDecode
+        image.onerror = settleDecode
+        image.src = url
+        if (typeof image.decode === 'function') image.decode().then(settleDecode, settleDecode)
+      })
+
+    // The stage owns the layers and the flight; this effect owns what to show
+    // (the gallery and its rotation) and hands the stage the world it needs.
+    const stage = createWallpaperStage({
+      createElement: () => document.createElement('div'),
+      mount: (nodes) => { document.body.append(...nodes) },
+      readState: () => {
+        const s = settingsOf()
+        return {
+          enabled: s.enabled && resolveWallpaperList(s.customWallpaper, s.customWallpapers).length > 0,
+          blurPx: s.wallpaperBlur,
+          dim: s.wallpaperDim,
+          reducedMotion: prefersReducedMotion(),
+          eco: detectPerfTier(s.decorDensity, s.decorSpeed, s.inputMaterial) === 'eco',
+        }
+      },
+      decode: (url) => decodeWallpaper(url, WALLPAPER_DECODE_TIMEOUT_MS),
+    })
+
     let timer: ReturnType<typeof setInterval> | null = null
     let index = 0
     let period = -1
-
-    /** Ensure the fixed wallpaper layer exists and return it. */
-    const ensureLayer = (): HTMLDivElement => {
-      if (layer === null) {
-        layer = document.createElement('div')
-        layer.dataset.frierenWallpaperLayer = ''
-        layer.style.cssText = 'position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed;transform:scale(1.1);transition:filter 0.3s ease;'
-        document.body.appendChild(layer)
-      }
-      return layer
-    }
 
     const clearTimer = (): void => {
       if (timer !== null) {
@@ -599,32 +632,24 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
     }
 
     /**
-     * Paint the gallery image at the current index. Settings are read fresh on
+     * Hand the current gallery image to the stage. Settings are read fresh on
      * every call, so the rotation tick never paints from a stale closure.
      */
-    const apply = (): void => {
+    const paint = (reason: WallpaperPaintReason): void => {
       const s = settingsOf()
       const list = resolveWallpaperList(s.customWallpaper, s.customWallpapers)
       if (!s.enabled || list.length === 0) {
         clearTimer()
-        if (layer !== null) {
-          layer.remove()
-          layer = null
-        }
         document.body.removeAttribute('data-frieren-wallpaper')
+        stage.teardown()
         return
       }
       if (index >= list.length) index = 0
       const url = list[index] ?? list[0]
       if (url === undefined) return
-      const el = ensureLayer()
-      // Always update: the rotation tick, re-uploads, the blur slider, and the
-      // dim slider all land here.
-      el.style.backgroundImage = wallpaperLayerBackground(url, s.wallpaperDim)
-      const clamped = Math.max(0, Math.min(20, s.wallpaperBlur))
-      el.style.filter = clamped > 0 ? `blur(${clamped}px)` : 'none'
       // Mark the body so the transparency CSS kicks in.
       document.body.setAttribute('data-frieren-wallpaper', 'on')
+      stage.paint(url, reason)
     }
 
     /** Keep the rotation timer in step with the gallery size and the interval. */
@@ -640,20 +665,20 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
       clearTimer()
       timer = setInterval(() => {
         const now = settingsOf()
-        const live = resolveWallpaperList(now.customWallpaper, now.customWallpapers)
-        if (!now.enabled || live.length <= 1) {
+        const liveList = resolveWallpaperList(now.customWallpaper, now.customWallpapers)
+        if (!now.enabled || liveList.length <= 1) {
           clearTimer()
-          apply()
+          paint('settings')
           return
         }
-        index = nextWallpaperIndex(index, live.length, now.carouselMode)
-        apply()
+        index = nextWallpaperIndex(index, liveList.length, now.carouselMode)
+        paint('rotate')
       }, wanted)
       period = wanted
     }
 
     const sync = (): void => {
-      apply()
+      paint('settings')
       syncTimer()
     }
     sync()
@@ -662,8 +687,8 @@ body[data-ds-dark-theme][data-frieren-wallpaper] {
       unsubscribe()
       clearTimer()
       transparencyTag.remove()
-      if (layer !== null) layer.remove()
       document.body.removeAttribute('data-frieren-wallpaper')
+      stage.teardown()
     }
   }, 'frieren-zzj: custom wallpaper layer')
 

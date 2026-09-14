@@ -291,7 +291,10 @@ body[data-ds-dark-theme] .textInput::placeholder {
   justify-content: center;
   border-radius: 50%;
   border: 1px solid var(--dsw-alias-border-l2, #b9a8c2);
-  background: var(--dsw-alias-bg-base, #fff);
+  /* An opaque chip, not bg-base: with a wallpaper set the surface token is
+   * translucent (a white mist in the light palette), and a see-through remove
+   * button over a thumbnail is invisible. */
+  background: var(--dsw-alias-bg-layer-1, #fff);
   color: var(--dsw-alias-label-secondary, #6f6a80);
   font-size: 13px;
   line-height: 1;

@@ -8,7 +8,7 @@ blue-moon-weed flowers, magic circles), and
 registers the frame stage, the hero seal, the header badge, and the rotating
 Himmel dock quote into their slots (click the line to roll the next quote).
 Initial state has NO wallpaper; users can upload their own image as the
-full-page background and adjust its blur and dimming.
+full-page background and adjust its blur and veil strength.
 
 ## Configuration
 
@@ -35,6 +35,22 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
   images a rotation row appears: interval (5s–10min) and order (in order /
   shuffle, where shuffle always lands on a different image than the current
   one). A single image starts no timer, so its behavior is unchanged,
+  - **depth fly-through rotation**: a rotation is not a hard cut. The incoming
+  image flies in from the distance (`scale(0.82)`, `blur(user + 16px)`,
+  `opacity 0` → the resting frame at `scale(1.1)`, the user's blur, opaque, over
+  1100ms on `cubic-bezier(0.4, 0, 0.2, 1)`) while the outgoing one is flung past
+  the viewer (resting → `scale(1.6)`, `+20px` blur, faded out over 700ms on
+  `cubic-bezier(0.5, 0, 0.9, 0.4)`). The stage is three layers — two image slots
+  alternating A/B plus a veil layer of its own — promoted with `will-change`
+  only while flying; landing cancels the animations, writes the resting inline
+  styles back and releases the old bitmap, so the end frame is pixel-identical
+  to the resting state and the handoff cannot jump. The next image is decoded
+  (`Image.decode()`, 1.5s fallback) before the flight starts, and only a
+  rotation tick may animate: settings changes and the first paint hard-cut.
+  Downgrades: `prefers-reduced-motion` hard-cuts, the eco performance tier falls
+  back to a 600ms plain crossfade. Every number is planned by the pure
+  `src/client/wallpaper-transition.ts` and driven by `src/client/wallpaper-stage.ts`
+  (both unit-tested),
   - **wallpaper file store** (node half): `POST <wallpaper prefix>` decodes a
   jpeg/png/webp data URL and writes it content-addressed under
   `dshHomePath('plugin-data', 'frieren-zzj', 'wallpapers')`, answering
@@ -58,10 +74,13 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
   medium / heavy); changes animate smoothly via `transition: filter 0.3s ease`.
   `transform: scale(1.1)` prevents blurred edges from showing. Only shown when a
   wallpaper is set,
-  - **wallpaper dimming** (0%–80%): a slider that stacks a black shading
-  gradient over the wallpaper image so text stays readable on busy backgrounds,
-  plus four presets (none / light / medium / heavy). 0% composes the bare image
-  URL, so an unused slider renders identically to the layer before this
+  - **wallpaper veil** (0%–80%): a slider that stacks a palette-colored veil over
+  the wallpaper image so text stays readable on busy backgrounds, plus four
+  presets (none / light / medium / heavy). The veil color rides
+  `--fri-wallpaper-scrim-rgb`: black under the dark palette (shading) and white
+  under the light one (misting) — light-palette ink is near-black, so a black
+  shade would push the foreground into the background. 0% composes the bare
+  image URL, so an unused slider renders identically to the layer before this
   feature. Only shown when a wallpaper is set,
 - overall material (glass / plain): `glass` applies a FIXED frosted look to
   the input card (`[data-composer-card]`), the task-list dock card
@@ -75,7 +94,13 @@ The plugin owns a dedicated **「芙莉莲主题」settings section** (a
   are baked in and NOT user-adjustable; `plain` removes the stylesheet and
   every card falls back to its default surface. Message-area cards (bubbles,
   tool cards) are deliberately not glassed and the message area stays
-  transparent, so the wallpaper remains fully visible. Dark rules ride
+  transparent, so the wallpaper remains fully visible. Glass cards are TEXT
+  surfaces, so the light variant's white is strong (0.62: over a black
+  wallpaper that still leaves light-palette ink above 7:1, where the original
+  0.25 left it at ~2:1 — the light-theme settings panel was unreadable), and
+  while a wallpaper is set the light palette also re-binds the sidebar fill,
+  the input card, and the bubbles to a 62% white base; the dark palette's
+  values are untouched. Dark rules ride
   `body[data-ds-dark-theme]`, so the dark glass follows the user's manual
   light/dark/system preference, not the OS media query,
 - per-layer decoration toggles (sparkles, blossoms, magic circle, ribbon,
@@ -123,7 +148,7 @@ its default while no settings document is present.
 while the decorations stay on screen: sparkles rest at their lit opacity,
 blossoms park inside the viewport instead of freezing above the top edge or
 mid-fall, the magic circle holds its shape, and the wallpaper layer's
-blur/dimming transition is dropped. This follows the operating system setting —
+blur/veil transition is dropped. This follows the operating system setting —
 the plugin adds no row for it.
 
 ## Model Experience

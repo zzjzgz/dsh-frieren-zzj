@@ -10,6 +10,14 @@
  * even lower-alpha dark base with a subtler white border); the material is
  * fixed — users only choose glass vs plain, nothing is adjustable.
  *
+ * The light variant's white is deliberately strong (0.62). Glass here is a
+ * TEXT surface: light-palette ink is near-black, and 0.25 white over a dark
+ * wallpaper leaves the settings modal and the composer at ~2:1 contrast, i.e.
+ * unreadable. At 0.62 the surface stays above 4.5:1 even over a black
+ * wallpaper, and over the default white page it renders white either way, so
+ * nothing changes until a wallpaper is actually behind it. These cards are the
+ * only glassed surfaces — the message area itself keeps its own surface.
+ *
  * Targets (stable selectors):
  * - `[data-composer-card]` — the input card (ui-conversation InputBar);
  * - `[data-testid='todo-panel']` — the task-list dock card (ui-conversation
@@ -49,7 +57,7 @@ const GLASS_CARDS: readonly string[] = [
 
 /** The fixed iOS-style glass-material stylesheet; injected while inputMaterial = 'glass'. */
 export const GLASS_CSS = `${GLASS_CARDS.join(',\n')} {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.62) !important;
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
   backdrop-filter: blur(16px) saturate(1.8) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;

@@ -14,6 +14,10 @@ export const CUSTOM_WALLPAPER_FIELD = 'customWallpaper'
 /** Wallpaper blur radius in pixels (0 = sharp, 20 = heavy blur). */
 export const WALLPAPER_BLUR_FIELD = 'wallpaperBlur'
 
+/** Blur ceiling in px: the radius the slider, the image layers, and the
+ * fly-through's blur endpoints all clamp to. */
+export const MAX_WALLPAPER_BLUR = 20
+
 /** Wallpaper dim (darkening overlay) percentage: 0 = off, 80 = heaviest shade. */
 export const WALLPAPER_DIM_FIELD = 'wallpaperDim'
 

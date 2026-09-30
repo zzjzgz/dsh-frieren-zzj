@@ -16,8 +16,9 @@ import { PLATFORM_MODULES } from './platform.build.ts'
 
 const ID = '@zengzhaojun/dsh-client-frieren-zzj'
 
-/** External resolved from the loader module table: platform seeds + the runtime store exemption. */
-const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES, '@deepseek-ai/dsh-client-runtime/client']
+/** External resolved from the loader module table: platform seeds only. DSH 0.2 dropped the
+ *  dsh-client-runtime face, so its `ClientContext` is now plain `@deepseek-ai/cordis`. */
+const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES]
 
 /** Wire/type layers a client bundle may inline (mirrored from the harness preset). */
 const INLINE_SAFE = /^@deepseek-ai\/dsh-(host-apiproxy|session|llm|tools|brand)(\/|$)/

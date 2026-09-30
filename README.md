@@ -2,7 +2,7 @@
 
 > 葬送的芙莉莲 × 勇者辛美尔 —— DeepSeek Harness Web 界面（`dsh web`）的芙莉莲主题插件
 ```powershell
-pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40"
+pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41"
 ```
 把整个 Web 界面变成充满芙莉莲元素的水彩世界：蓝紫水彩配色、魔法阵、苍月草飘花、星光、勇者金戒指印章与辛美尔的名台词，输入框支持玻璃/普通两种材质（消息区保持透明，壁纸完整可见）。所有开关都收在设置里的独立「芙莉莲主题」分区：外观模式、自定义壁纸上传（含模糊度调节）、整体材质、逐层装饰开关、名台词轮换方式。初始状态为无壁纸，用户可自行上传图片作为整体背景。
 
@@ -40,10 +40,12 @@ pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.
 
 ## 环境要求
 
-- DeepSeek Harness `0.1.0-rc.5` 同发布线（`dsh` CLI）
+- **DeepSeek Harness `0.2.0-rc.2` 同发布线**（`rc.41` 起；`rc.40` 及更早版本面向 `0.1.x`，装到 `0.2.x` 上会被 `dsh plugin` 的兼容性闸门拒绝）
 - 使用 **Web profile**（`dsh web`）
 - `pnpm` 已安装且在 PATH 上（`dsh plugin` 通过 pnpm 管理 profile 依赖）
 - 现代浏览器（Chrome / Edge / Firefox / Safari）
+
+> 兼容性闸门怎么判定：`dsh plugin` 会拿本插件 `package.json` 里所有 `@deepseek-ai/dsh*` 的 `peerDependencies` 去匹配当前 DSH 运行版本（`semver.satisfies(runtime, range, { includePrerelease: true })`），任一不满足就整包拒绝安装（不会装一半）。所以升级 DSH 主版本线时，插件必须同步放宽/抬升 peer 范围。
 
 ## 目录结构
 
@@ -54,7 +56,7 @@ dsh-frieren-zzj/
 │   ├── cordis.patch.yml       # bundle patch 层（声明 dsh.bundle 后自动激活）
 │   └── ...
 └── dist/
-    └── zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.40.tgz   # 打包产物（安装版用）
+    └── zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.41.tgz   # 打包产物（安装版用）
 ```
 
 ## 安装
@@ -63,7 +65,9 @@ dsh-frieren-zzj/
 
 > **原理**：从 `0.1.0-rc.24` 起，本插件同时声明 `dsh.bundle` 和 `dsh.client`，`dsh plugin add` 安装后会**自动**将其加入 `dsh.profile.bundles` 层列表并激活——**不再需要手动编辑 `cordis.patch.yml`**。一条命令装完，重启即生效。
 >
-> **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 命名空间有一份**硬编码白名单**（`agent-loop`、`shell`、`locale`、`permission`、`ui-conversation`、`ui-theme`、`web-search-deepseek` 等），第三方命名空间一律 `settings-not-exposed`，浏览器端写入会被静默丢弃（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边直接向 settings 服务注册命名空间，并额外注册一条同源 HTTP 路由（`/plugins/@zengzhaojun/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，设置仍持久化在用户设置文档（`~/.dsh/settings.yaml`），与内置插件一致。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
+> **设置为什么能写入**：dsh 的 API 网关对浏览器可写的 settings 条目有一份白名单，第三方插件走标准 settings RPC 会被拒（表现为设置里的开关点了没反应）。本插件因此不走该通道：node 半边注册一条同源 HTTP 路由（`/plugins/@zengzhaojun/dsh-client-frieren-zzj/settings`）作为浏览器读写桥，直连 settings 服务。**该桥依赖 node 半边，所以升级后必须完整重启 `dsh web`。**
+>
+> **设置存在哪里（DSH 0.2）**：`0.2` 起插件设置不再是可随意注册的命名空间，而是**插件自己这条 Loader 条目的 `config`**：node 半边导出 `Config`（`frieren-zzj/src/frieren-settings.ts` 的 schema，每个字段都标了 `.volatile()`），`SettingsForms.describe()` 按**条目 id**（本插件即 `frieren-zzj`）读出表单值，写入经 `update/replace/mutate` 落到 profile 的 `cordis.patch.yml` 里该条目的 `config` 段。桥的 GET/PUT 语义与旧版一致，所以浏览器半边无需改动。
 
 ### 第 0 步：确认环境
 
@@ -76,20 +80,20 @@ dsh-frieren-zzj/
 插件已发布到 npm（`@zengzhaojun/dsh-client-frieren-zzj`），直接按包名安装：
 
 ```powershell
-pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40"
+pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41"
 ```
 
 - 本质是让 pnpm 从 npm registry 拉包，装进 profile 依赖（由 pnpm 管理）；
 - `dsh plugin` 会检测到包声明了 `dsh.bundle`，**自动**将其加入 `dsh.profile.bundles` 层列表——**无需手动编辑 `cordis.patch.yml`**；
 - 本机如果配的是腾讯镜像，新版本可能延迟几分钟才同步；遇到 404 就临时指定官方源：
-  `pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40" --registry=https://registry.npmjs.org`
+  `pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41" --registry=https://registry.npmjs.org`
 
 ### 第 2 步（可选）：离线/本地 tgz 安装
 
 没有 npm 网络时，可用仓库 `dist/` 里的 tgz 安装：
 
 ```powershell
-pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.40.tgz"
+pnpm dsh plugin --profile web add "file:D:/JavaCode/ds-h/dsh-frieren-zzj/dist/zengzhaojun-dsh-client-frieren-zzj-0.1.0-rc.41.tgz"
 ```
 
 > ⚠️ 路径注意：`dsh plugin add` 会把**相对**路径锚定到「你运行命令的目录」，而手动 `pnpm add` 的相对路径会相对 **profile 目录**解析——所以一律写 **`file:` + 正斜杠的绝对路径**最稳妥，不会装错地方。
@@ -103,7 +107,7 @@ Get-ChildItem "$env:USERPROFILE\.dsh\profiles\web\node_modules\@zengzhaojun\dsh-
 pnpm dsh plugin --profile web why @zengzhaojun/dsh-client-frieren-zzj
 ```
 
-> 小知识：pnpm 写进 `package.json` 的 spec 对本地 tgz 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象；从 npm 安装则是标准的 `"@zengzhaojun/dsh-client-frieren-zzj": "0.1.0-rc.40"`。
+> 小知识：pnpm 写进 `package.json` 的 spec 对本地 tgz 会变成 `"file:D://JavaCode//ds-h//dsh-frieren-zzj//dist//...tgz"` 这种盘符后带双斜杠的形式，这是 pnpm 自己的路径规范化，属正常现象；从 npm 安装则是标准的 `"@zengzhaojun/dsh-client-frieren-zzj": "0.1.0-rc.41"`。
 
 ### 第 3 步：验证组合配置
 
@@ -135,7 +139,7 @@ pnpm dsh web --dump-config
 
 1. 升级安装：
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40"
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41"
    ```
 2. 打开 `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`，删除之前手动加的块：
    ```yaml
@@ -150,7 +154,7 @@ pnpm dsh web --dump-config
 
 ## 更新插件（发布新版本）
 
-1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.33` → `0.1.0-rc.40`）。**必须升**：npm 不允许重复发布同一版本，pnpm 也按 lockfile 校验；
+1. **升版本号**：改 `frieren-zzj/package.json` 的 `version`（如 `0.1.0-rc.33` → `0.1.0-rc.41`）。**必须升**：npm 不允许重复发布同一版本，pnpm 也按 lockfile 校验；
 2. 重新构建 + 发布（见「从源码打包」和「发布到 npm」）：
 
    ```powershell
@@ -161,7 +165,7 @@ pnpm dsh web --dump-config
 3. 任何机器上按新版本号重装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40"
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41"
    ```
 
 4. 重启 `dsh web` + 浏览器硬刷新（设置桥依赖 node 半边，**必须完整重启**）。
@@ -178,13 +182,11 @@ pnpm dsh web --dump-config
    npm test          # 等价于 node --test，自动发现 test/ 下的用例
    ```
 
-3. 构建出 `lib/` 再打包。本仓库自带一套**独立构建工具链**（`tsconfig.build.json` + `tsdown.config.build.ts` + `platform.build.ts`，仓库根的 `node_modules` 用 junction 复用本机 DSH 源码仓库的依赖，完全不改动 DSH 源码）：
+3. 构建出 `lib/` 再打包。本仓库自带一套**独立构建工具链**（`tsconfig.build.json` + `tsdown.config.build.ts` + `platform.build.ts`，完全不改动 DSH 源码）：
 
-   > **junction 前提**：`node_modules/@deepseek-ai/` 下需要指向本机 DSH 源码包的 junction。除既有的那批之外，当前源码还依赖两个：
-   > - `dsh-client-ui-session` → `<DSH源码>/packages/client/ui-session`（施法指示器要用它的 `useSession` 标准属性类型）
-   > - `dsh-home-paths` → `<DSH源码>/packages/util/home-paths`（node 半边用它解析 DSH 主目录；构建时会被**内联**进 `lib/index.js`，所以安装方无需该包）
+   > **依赖来源**：`rc.41` 起，TypeScript 需要的 DSH 类型全部来自 `frieren-zzj` 自己的 `devDependencies`（已锁到 npm 上的 `0.2.0-rc.2`），`cd frieren-zzj && pnpm install` 即可，**不再需要**给仓库根的 `node_modules/@deepseek-ai/` 手工补 junction。只有仓库根的构建工具（`typescript` / `tsdown` / `lightningcss`）仍需存在。
    >
-   > 换机器重建时若报 `Cannot find module '@deepseek-ai/dsh-...'`，按上面两条补 junction 即可。
+   > ⚠️ **升级 DSH 线时**：`peerDependencies` 与 `devDependencies` 里的 `@deepseek-ai/dsh-*` 要一起抬到与运行版本相同的发布线（例如 `^0.2.0-rc.2`），否则插件要么装不上（兼容性闸门），要么类型对不上。
 
    ```powershell
    cd D:\JavaCode\ds-h\dsh-frieren-zzj
@@ -193,6 +195,8 @@ pnpm dsh web --dump-config
    cd frieren-zzj
    npm pack --pack-destination ..\dist
    ```
+
+   重构前先删掉 `frieren-zzj\lib`，`tsc` 的增量构建不会清理已删除源文件遗留的产物（否则 `npm pack` 会把旧 `.d.ts` 一起打进去）。
 
 3. 新的 tgz 出现在 `dist/` 后，可本地安装（见「安装」第 2 步），或继续发布到 npm（见「发布到 npm」）。
 
@@ -217,18 +221,18 @@ pnpm dsh web --dump-config
 
    > **2FA 提示**：账号开启双重认证时，`npm publish` 会提示输入验证码（或加 `--otp=6位码`）。想免验证码发布（适合脚本/CI），在 <https://www.npmjs.com/settings/zengzhaojun/tokens> 生成 **Granular Access Token**：All packages + Read and write + 勾选 **Bypass 2FA for publish**，然后 `npm config set //registry.npmjs.org/:_authToken=令牌`。令牌等于发布权限，别提交进仓库、别分享。
 
-   > **版本标签（dist-tag）**：`--tag rc` 发布**不会**更新 `latest` 标签，所以不带版本号的安装命令装到的是 `latest`（可能落后于 rc）。建议安装时**显式写版本**（`@0.1.0-rc.40`）；想统一 latest 可补一条：`npm dist-tag add @zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40 latest`。
+   > **版本标签（dist-tag）**：`--tag rc` 发布**不会**更新 `latest` 标签，所以不带版本号的安装命令装到的是 `latest`（可能落后于 rc）。建议安装时**显式写版本**（`@0.1.0-rc.41`）；想统一 latest 可补一条：`npm dist-tag add @zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41 latest`。
 
 3. **任何机器上一条命令安装**（本机腾讯镜像会同步 npmjs，新包一般几分钟内可见）：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40"
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41"
    ```
 
    如果镜像还没同步到（404），可先临时指定官方源安装：
 
    ```powershell
-   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40" --registry=https://registry.npmjs.org
+   pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41" --registry=https://registry.npmjs.org
    ```
 
 4. 重启 `dsh web` 即可——`dsh.bundle` 声明会让插件自动作为 profile 层激活，无需手动编辑 `cordis.patch.yml`。
@@ -252,6 +256,9 @@ pnpm dsh web --dump-config
 
 ## 常见问题
 
+**安装时报“与 DSH 不兼容 / is incompatible with dsh …”？**
+这是 `dsh plugin` 的兼容性闸门：插件 `peerDependencies` 里的 `@deepseek-ai/dsh*` 范围不包含当前 DSH 版本（例如 `rc.40` 声明的是 `^0.1.0-rc.5`，而运行的是 `0.2.0-rc.2`）。**装对应的插件版本即可**——`rc.41` 起声明 `^0.2.0-rc.2`，可在 DSH `0.2.x` 上安装。不要用 `dsh plugin allow-version` 硬放行旧版本：`0.2` 移除了 `@deepseek-ai/dsh-client-runtime`，并为 `ctx.slots`、插件设置换了归属，旧包强行加载会在浏览器端报错。
+
 **重启后主题还在吗？**
 在。装进 profile 就是部署级插件，随组合加载，不像动态插件那样重启即失。
 
@@ -268,7 +275,7 @@ pnpm dsh web --dump-config
 设置 →「芙莉莲主题」→ 顶部**总开关**关闭，所有主题效果立即消失、界面恢复默认；再开一次即全部回来。想连设置一起重置，点底部**恢复默认设置**。
 
 **朋友怎么用？**
-一条命令：`pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.40"`，重启 `dsh web` 即可；初始无壁纸，到设置中上传自定义壁纸。离线环境则用 `dist/` 里的 tgz 走第 2 步。想连配置一起分享：设置 →「芙莉莲主题」→**备份与分享** →「导出设置」得到一个 JSON 文件，对方点「导入设置」选中它即可（壁纸也在文件里，可能较大）。
+一条命令：`pnpm dsh plugin --profile web add "@zengzhaojun/dsh-client-frieren-zzj@0.1.0-rc.41"`，重启 `dsh web` 即可；初始无壁纸，到设置中上传自定义壁纸。离线环境则用 `dist/` 里的 tgz 走第 2 步。想连配置一起分享：设置 →「芙莉莲主题」→**备份与分享** →「导出设置」得到一个 JSON 文件，对方点「导入设置」选中它即可（壁纸也在文件里，可能较大）。
 
 **离线能用吗？**
 能。标题字体在线时从 Google Fonts 加载，离线自动回退本地衬线字体栈；配色完全离线可用，壁纸由用户上传后离线可用。

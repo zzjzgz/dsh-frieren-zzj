@@ -12,7 +12,13 @@
  */
 import * as React from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+// DSH 0.2 removed the dsh-client-runtime face: a client plugin's apply() now
+// receives the plain cordis Context, exactly as the shipped client packages do.
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+// Type-only: since DSH 0.2 the `ctx.slots` service (SlotRegistry, and with it
+// the SlotMap keys of every declaring package) is owned by the ui-renderer
+// client face, not by the pure-core ui-slots package.
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the theme service (ctx.theme, theme/change) and slot-name
 // Context merges from the declaring packages (client bundle purity gate: no
 // value imports).

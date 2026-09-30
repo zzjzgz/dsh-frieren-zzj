@@ -197,28 +197,40 @@ export const DEFAULT_FRIEREN_SETTINGS: ResolvedFrierenSettings = {
   [CUSTOM_RANDOM_QUOTES_FIELD]: '',
 }
 
-/** Durable schema; also the wire envelope the browser scope validates against. */
-export const FrierenSettingsSchema: z<FrierenSettings> = z.object({
-  [ENABLED_FIELD]: z.boolean().default(true),
-  [CUSTOM_WALLPAPER_FIELD]: z.string().default(''),
-  [WALLPAPER_BLUR_FIELD]: z.number().default(0),
-  [WALLPAPER_DIM_FIELD]: z.number().default(0),
-  [WALLPAPERS_FIELD]: z.string().default(''),
-  [CAROUSEL_INTERVAL_FIELD]: z.number().default(DEFAULT_CAROUSEL_INTERVAL),
-  [CAROUSEL_MODE_FIELD]: z.union([...WALLPAPER_ROTATIONS]).default(DEFAULT_CAROUSEL_MODE),
-  [INPUT_MATERIAL_FIELD]: z.union([...INPUT_MATERIALS]).default(DEFAULT_INPUT_MATERIAL),
-  [DECOR_SPARKLES_FIELD]: z.boolean().default(true),
-  [DECOR_FLOWERS_FIELD]: z.boolean().default(true),
-  [DECOR_CIRCLE_FIELD]: z.boolean().default(true),
-  [DECOR_RIBBON_FIELD]: z.boolean().default(true),
-  [DECOR_VIGNETTE_FIELD]: z.boolean().default(true),
-  [DECOR_DENSITY_FIELD]: z.number().default(1),
-  [DECOR_SPEED_FIELD]: z.number().default(1),
-  [CIRCLE_SCALE_FIELD]: z.number().default(1),
-  [FOCUS_MODE_FIELD]: z.boolean().default(false),
-  [QUOTE_MODE_FIELD]: z.union([...QUOTE_MODES]).default(DEFAULT_QUOTE_MODE),
-  [CUSTOM_QUOTE_FIELD]: z.string().default(''),
-  [CUSTOM_RANDOM_QUOTES_FIELD]: z.string().default(''),
+/**
+ * Durable schema; also the wire envelope the browser scope validates against.
+ *
+ * DSH 0.2 owns plugin settings as the owning Loader entry's `config`, so this
+ * schema is exported as the node half's `Config` and every field is marked
+ * volatile: volatile nodes are the ones the settings service may rewrite live
+ * (`SettingsForms.update/replace/mutate`) without remounting the plugin, and an
+ * entry whose schema exposes no volatile field is not described at all.
+ *
+ * No explicit `z<FrierenSettings>` annotation: a volatile schema's inferred
+ * output is `Volatile<FrierenSettings>` at the type level, while every consumer
+ * reads the plain section through {@link FrierenSettings} / {@link resolveSettings}.
+ */
+export const FrierenSettingsSchema = z.object({
+  [ENABLED_FIELD]: z.boolean().default(true).volatile(),
+  [CUSTOM_WALLPAPER_FIELD]: z.string().default('').volatile(),
+  [WALLPAPER_BLUR_FIELD]: z.number().default(0).volatile(),
+  [WALLPAPER_DIM_FIELD]: z.number().default(0).volatile(),
+  [WALLPAPERS_FIELD]: z.string().default('').volatile(),
+  [CAROUSEL_INTERVAL_FIELD]: z.number().default(DEFAULT_CAROUSEL_INTERVAL).volatile(),
+  [CAROUSEL_MODE_FIELD]: z.union([...WALLPAPER_ROTATIONS]).default(DEFAULT_CAROUSEL_MODE).volatile(),
+  [INPUT_MATERIAL_FIELD]: z.union([...INPUT_MATERIALS]).default(DEFAULT_INPUT_MATERIAL).volatile(),
+  [DECOR_SPARKLES_FIELD]: z.boolean().default(true).volatile(),
+  [DECOR_FLOWERS_FIELD]: z.boolean().default(true).volatile(),
+  [DECOR_CIRCLE_FIELD]: z.boolean().default(true).volatile(),
+  [DECOR_RIBBON_FIELD]: z.boolean().default(true).volatile(),
+  [DECOR_VIGNETTE_FIELD]: z.boolean().default(true).volatile(),
+  [DECOR_DENSITY_FIELD]: z.number().default(1).volatile(),
+  [DECOR_SPEED_FIELD]: z.number().default(1).volatile(),
+  [CIRCLE_SCALE_FIELD]: z.number().default(1).volatile(),
+  [FOCUS_MODE_FIELD]: z.boolean().default(false).volatile(),
+  [QUOTE_MODE_FIELD]: z.union([...QUOTE_MODES]).default(DEFAULT_QUOTE_MODE).volatile(),
+  [CUSTOM_QUOTE_FIELD]: z.string().default('').volatile(),
+  [CUSTOM_RANDOM_QUOTES_FIELD]: z.string().default('').volatile(),
 })
 
 /**

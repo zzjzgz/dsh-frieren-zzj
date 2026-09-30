@@ -21,7 +21,7 @@ import { readdir, stat, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 // Type-only: activates the webServer Context merge for the settings bridge route.
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import type { SettingsNamespace, SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import type { SettingsDescriptor, SettingsNamespace, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { FRIEREN_SETTINGS_NAMESPACE, FrierenSettingsSchema } from './frieren-settings.ts'
 import { MAX_BRIDGE_BODY_BYTES, WALLPAPER_ROUTE_PREFIX } from './routes.ts'
@@ -31,15 +31,32 @@ import {
   referencedWallpaperNames, removeWallpaper, storeWallpaper,
 } from './wallpaper-store.ts'
 
-// The namespace travels as a plain lowercase-hyphen string at runtime; every
-// seam method (`register`/`get`/`update`/`replace`/`mutate`) validates it
-// itself. The brand is a compile-time assertion only: newer builds of
-// `@deepseek-ai/dsh-settings` (0.1.5+) dropped the `settingsNamespace()`
-// helper and accept the raw string, older ones require the branded type.
+// DSH 0.2 dropped the standalone settings-namespace registry: a plugin's
+// settings ARE its Loader entry's `config`, schema'd by the module's `Config`
+// export. `SettingsForms.describe()` therefore addresses them by profile entry
+// id, and only volatile fields may be rewritten live — hence the `.volatile()`
+// on every field of the schema exported here.
+export const Config = FrierenSettingsSchema
+
+// The entry id is the row id this package's cordis.patch.yml inserts, which is
+// also the id the settings service reports for the plugin's own form.
 const NS = FRIEREN_SETTINGS_NAMESPACE as SettingsNamespace
 
 /** Exact route the browser half fetches to read/write this plugin's settings. */
 export const SETTINGS_BRIDGE_PATH = '/plugins/@zengzhaojun/dsh-client-frieren-zzj/settings'
+
+/**
+ * Read this plugin entry's current form values.
+ *
+ * A missing descriptor means the entry is not (yet) describable — the plugin
+ * inactive, or its schema absent — and reads report `null` exactly like the
+ * old namespace read did for an unset section.
+ * @param settings - the live settings service.
+ * @returns the resolved config section, or null while it is unavailable.
+ */
+function readSection(settings: { describe(): SettingsDescriptor[] }): unknown {
+  return settings.describe().find(row => row.ns === NS)?.value ?? null
+}
 
 /** Where uploaded wallpapers live, under the harness home. */
 const WALLPAPER_DIR = dshHomePath('plugin-data', 'frieren-zzj', 'wallpapers')
@@ -172,13 +189,9 @@ async function handleWallpaperStore(req: IncomingMessage, res: ServerResponse): 
   res.end(method === 'HEAD' ? undefined : bytes)
 }
 
-/** Host plugin body — register the wallpaper switch's durable section and its browser bridge. */
+/** Host plugin body — expose the theme settings form and its browser bridge. */
 export function apply(ctx: Context): void {
-  ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.register(NS, FrierenSettingsSchema)
-  })
-
-  // Browser settings bridge: bypasses the harness's settings RPC allowlist by
+  // Browser settings bridge: bypasses the harness's settings RPC surface by
   // talking to the settings service directly on the same process. The route is
   // an exact match under /plugins, which wins over client-modules' prefix
   // route, and it is removed with this plugin's fiber.
@@ -190,7 +203,7 @@ export function apply(ctx: Context): void {
       handler: async (req, res) => {
         const method = req.method ?? 'GET'
         if (method === 'GET') {
-          respond(res, 200, { ok: true, value: settings.get(NS) ?? null })
+          respond(res, 200, { ok: true, value: readSection(settings) })
           return
         }
         if (method !== 'PUT' && method !== 'POST') {
@@ -223,7 +236,7 @@ export function apply(ctx: Context): void {
           respond(res, 409, { ok: false, error: error instanceof Error ? error.message : String(error) })
           return
         }
-        respond(res, 200, { ok: true, value: settings.get(NS) ?? null })
+        respond(res, 200, { ok: true, value: readSection(settings) })
       },
     }), 'frieren-zzj: settings bridge route')
 
@@ -238,8 +251,8 @@ export function apply(ctx: Context): void {
     // Sweep stored images nothing references. The store's grace window spares
     // anything written within the last hour, so an upload that has been stored
     // but not yet written into the settings document survives this pass.
-    // The settings service returns the section untyped (`{}`), hence the cast.
-    const section = settings.get(NS) as { customWallpapers?: unknown } | undefined
+    // The settings service returns the section untyped, hence the cast.
+    const section = readSection(settings) as { customWallpapers?: unknown } | undefined
     void pruneWallpapers(section?.customWallpapers)
   })
 }
